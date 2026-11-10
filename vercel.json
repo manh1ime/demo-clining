@@ -1,7 +1,5 @@
 {
   "framework": null,
-  "buildCommand": null,
-  "outputDirectory": ".",
   "headers": [
     {
       "source": "/:path*",
