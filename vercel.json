@@ -1,5 +1,6 @@
 {
   "framework": null,
+  "regions": ["fra1"],
   "headers": [
     {
       "source": "/:path*",
