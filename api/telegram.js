@@ -1,5 +1,5 @@
 // POST /api/telegram — webhook бота: кнопки статусов и команды менеджера.
-import { tg, hasRedis, redis, getLead, saveLead, renderLead, keyboard, isManagerChat, who, esc, money, fmtTime, STATUSES } from './_lib.js'
+import { tg, hasRedis, redis, getLead, saveLead, renderLead, keyboard, isManagerChat, who, esc, money, fmtTime, STATUSES, LEAD_TITLE } from './_lib.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('ok')
@@ -48,7 +48,7 @@ async function onCallback(q) {
   } else {
     // Без базы: меняем строку статуса прямо в тексте сообщения
     const lines = (q.message.text || '').split('\n')
-    lines[0] = `🧽 Заявка #${id} · ${STATUSES[status].label}`
+    lines[0] = `${LEAD_TITLE} #${id} · ${STATUSES[status].label}`
     lines.push(`• ${fmtTime(at)} — ${STATUSES[status].label} (${by})`)
     await tg('editMessageText', { ...target, text: lines.join('\n'), reply_markup: keyboard({ id, status }) })
   }

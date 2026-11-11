@@ -9,6 +9,8 @@ export const STATUSES = {
 }
 
 const DISPLAY_TZ = process.env.DISPLAY_TZ || 'Europe/Moscow'
+// Заголовок сообщения о заявке в Telegram, например «🧽 Заявка» или «Новая заявка с сайта»
+export const LEAD_TITLE = process.env.LEAD_TITLE || '🧽 Заявка'
 
 // ---------- Telegram ----------
 export async function tg(method, body = {}) {
@@ -67,7 +69,7 @@ const fmtDay = (d) => (d ? d.split('-').reverse().join('.') : '')
 export function renderLead(lead) {
   const s = STATUSES[lead.status] || STATUSES.new
   const lines = [
-    `<b>🧽 Заявка #${esc(lead.id)}</b> · ${s.label}`,
+    `<b>${esc(LEAD_TITLE)} #${esc(lead.id)}</b> · ${s.label}`,
     '',
     `👤 ${esc(lead.name)}`,
     `📞 ${esc(lead.phone)}`,
