@@ -79,6 +79,7 @@ export function renderLead(lead) {
   if (lead.total) lines.push(`💰 ${money(lead.total)} (предварительно)`)
   if (lead.date) lines.push(`📅 Удобная дата: ${fmtDay(lead.date)}`)
   if (lead.comment) lines.push(`💬 ${esc(lead.comment)}`)
+  if (lead.preview) lines.push(`🔎 Тестовая заявка с примера сайта: /p/${esc(lead.preview)}`)
   lines.push('', `🕒 Создана ${fmtTime(lead.createdAt)}`)
   if (lead.assignee) lines.push(`👷 Ответственный: ${esc(lead.assignee)}`)
   const h = (lead.history || []).slice(-6)

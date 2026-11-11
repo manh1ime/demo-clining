@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Лиды — приложение продаж</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#112632;--muted:#667784;--line:#dfe5e9;--blue:#2054ec;--red:#d93b3b}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.top{height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.top h1{font-size:16px;margin:0 6px 0 0;white-space:nowrap}
+.top .sp{flex:1}
+.stats{display:flex;gap:12px;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden}
+.stats b{color:var(--ink)}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 13px;cursor:pointer;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:#b8c4cc}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.in,select,textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:#fff;outline:none}
+.in:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2054ec22}
+textarea{resize:vertical;min-height:74px}
+.layout{display:grid;grid-template-columns:330px 1fr;height:calc(100% - 56px)}
+.side{border-right:1px solid var(--line);background:#fbfcfd;display:flex;flex-direction:column;min-height:0}
+.filters{padding:12px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+.list{overflow:auto;flex:1}
+.item{padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.item:hover{background:#f1f4f7}
+.item.on{background:#e8eefc}
+.item b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;margin-top:4px;flex-wrap:wrap}
+.badge{display:inline-block;padding:1px 8px;border-radius:20px;font-size:12px;background:#eef1f4;white-space:nowrap}
+.st-sent{background:#e3ebff;color:#1a44c4}.st-replied{background:#fff1d6;color:#8a5a00}.st-interested{background:#e5f8ec;color:#137a45}.st-client{background:#17a05d;color:#fff}.st-rejected{background:#fde7e7;color:#a32b2b}
+.hot{color:#d0571b;font-weight:600}
+.main{overflow:auto;padding:18px 20px 0;min-height:0}
+.empty{color:var(--muted);text-align:center;margin:18vh auto 0;max-width:420px}
+.empty h2{color:var(--ink);font-size:20px}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.head h2{margin:0;font-size:20px;flex:1;min-width:200px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;align-items:start}
+.col{display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h3{font-size:14px;margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+label.f{display:block;margin-bottom:10px}
+label.f>span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:-2px;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:#eef2f6;text-decoration:none;color:var(--ink);font-size:12px}
+.chip:hover{background:#e2e8ef}
+.swatches{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+.sw.on{box-shadow:0 0 0 2px var(--ink)}
+input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-radius:8px;padding:2px;background:#fff;cursor:pointer}
+.linkbox{display:flex;gap:6px}
+.linkbox .in{background:#f6f8fa}
+.frame{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;height:340px;position:relative;background:#eef2f5}
+.frame iframe{position:absolute;left:0;top:0;width:1280px;border:0;transform-origin:0 0;pointer-events:none}
+.frame .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);text-align:center;padding:20px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.send-wa{background:#25d366;border-color:#25d366;color:#fff}
+.send-tg{background:#229ed9;border-color:#229ed9;color:#fff}
+.send-max{background:#6b3cf2;border-color:#6b3cf2;color:#fff}
+.hint{color:var(--muted);font-size:12px;margin-top:6px}
+.hist{margin:10px 0 0;padding:0;list-style:none;color:var(--muted);font-size:12px;max-height:160px;overflow:auto}
+.hist li{padding:4px 0;border-top:1px dashed var(--line)}
+.savebar{position:sticky;bottom:0;margin:16px -20px 0;padding:12px 20px;background:#ffffffee;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;backdrop-filter:blur(6px);flex-wrap:wrap}
+.dirty{color:#b26b00;font-size:12px}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%) translateY(10px);background:#112632;color:#fff;padding:10px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none;z-index:50;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.toast.err{background:#a32b2b}
+.login{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:40}
+.login form{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;width:min(360px,92vw);display:grid;gap:12px}
+.login h2{margin:0;font-size:20px}
+.err-text{color:var(--red);font-size:13px;min-height:18px}
+@media(max-width:900px){.layout{grid-template-columns:1fr;height:auto}.side{max-height:42vh}.grid{grid-template-columns:1fr}.stats{display:none}.main{overflow:visible}}
+</style>
+</head>
+<body>
+
+<div class="login" id="login" hidden>
+  <form id="loginForm">
+    <h2>Вход в приложение</h2>
+    <input class="in" id="pass" type="password" placeholder="Пароль (ADMIN_PASSWORD)" autocomplete="current-password" required>
+    <div class="err-text" id="loginErr"></div>
+    <button class="btn pri" type="submit">Войти</button>
+  </form>
+</div>
+
+<header class="top">
+  <h1>🧽 Лиды</h1>
+  <div class="stats" id="stats"></div>
+  <div class="sp"></div>
+  <button class="btn sm" id="exportBtn" title="Выгрузить в CSV для Excel">Экспорт</button>
+  <button class="btn sm" id="logoutBtn">Выйти</button>
+  <button class="btn pri" id="newBtn">+ Новый лид</button>
+</header>
+
+<div class="layout">
+  <aside class="side">
+    <div class="filters">
+      <input class="in" id="q" type="search" placeholder="Поиск: название, город, телефон">
+      <select id="fStatus"><option value="">Все статусы</option></select>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="empty" id="empty">
+      <h2>Выберите лида или добавьте нового</h2>
+      <p>Для каждого лида автоматически создаётся пример сайта с его данными и отдельной ссылкой. Отсюда же можно отправить оффер в WhatsApp, Telegram или MAX.</p>
+      <button class="btn pri" id="newBtn2">+ Новый лид</button>
+    </div>
+
+    <form id="editor" hidden autocomplete="off">
+      <div class="head">
+        <h2 id="title">Новый лид</h2>
+        <select id="status" data-k="status" style="width:auto"></select>
+      </div>
+
+      <div class="grid">
+        <div class="col">
+          <section class="card">
+            <h3>Быстрое заполнение</h3>
+            <textarea id="paste" placeholder="Скопируйте сюда текст карточки из 2ГИС, Яндекс Карт, ВКонтакте или сайта — название, телефон, адрес, часы работы и ссылки распознаются автоматически"></textarea>
+            <div class="actions"><button class="btn sm" type="button" id="parseBtn">Распознать и заполнить</button></div>
+            <div class="hint">Заполняются только пустые поля, уже введённое не перезаписывается.</div>
+          </section>
+
+          <section class="card">
+            <h3>Компания</h3>
+            <label class="f"><span>Название *</span><input class="in" data-k="name" maxlength="80" required placeholder="Чистый дом"></label>
+            <div class="row">
+              <label class="f"><span>Город</span><input class="in" data-k="city" maxlength="60" placeholder="Казань"></label>
+              <label class="f"><span>Контактное лицо</span><input class="in" data-k="contactName" maxlength="60" placeholder="Имя"></label>
+            </div>
+            <div class="row">
+              <label class="f"><span>Телефон</span><input class="in" data-k="phone" maxlength="30" inputmode="tel" placeholder="+7 900 000-00-00"></label>
+              <label class="f"><span>Email</span><input class="in" data-k="email" maxlength="80" inputmode="email"></label>
+            </div>
+            <label class="f"><span>Адрес</span><input class="in" data-k="address" maxlength="160"></label>
+            <label class="f"><span>Часы работы</span><input class="in" data-k="hours" maxlength="80" placeholder="Ежедневно, 9:00–21:00"></label>
+            <label class="f"><span>Где нашли — ссылки на 2ГИС, Яндекс Карты, соцсети, сайт (по одной на строку)</span><textarea data-k="links" rows="3" placeholder="https://2gis.ru/...&#10;https://yandex.ru/maps/org/..."></textarea></label>
+            <div class="chips" id="chips"></div>
+          </section>
+
+          <section class="card">
+            <h3>Куда писать</h3>
+            <div class="row">
+              <label class="f"><span>WhatsApp (номер)</span><input class="in" data-k="wa" maxlength="30" inputmode="tel" placeholder="если пусто — телефон"></label>
+              <label class="f"><span>Telegram (@username, ссылка или номер)</span><input class="in" data-k="tg" maxlength="80" placeholder="@company"></label>
+            </div>
+            <div class="row">
+              <label class="f"><span>MAX (ссылка на чат или номер)</span><input class="in" data-k="max" maxlength="160"></label>
+              <label class="f"><span>ВКонтакте (ссылка)</span><input class="in" data-k="vk" maxlength="160" placeholder="https://vk.com/..."></label>
+            </div>
+            <div class="hint">Telegram, WhatsApp и ВКонтакте также покажутся в подвале их сайта-примера.</div>
+          </section>
+
+          <section class="card">
+            <h3>Заметки и история</h3>
+            <textarea data-k="notes" rows="4" placeholder="Договорённости, возражения, когда напомнить…"></textarea>
+            <ul class="hist" id="hist"></ul>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="card">
+            <h3>Сайт-пример <span class="badge" id="views"></span></h3>
+            <div class="row">
+              <label class="f"><span>Текст логотипа</span><input class="in" data-k="logoText" maxlength="40" placeholder="= название"></label>
+              <label class="f"><span>Надпись на флаконе</span><input class="in" data-k="bottleName" maxlength="12" placeholder="= первое слово"></label>
+            </div>
+            <label class="f"><span>Фирменный цвет</span>
+              <div class="swatches" id="swatches"><input type="color" data-k="accent" value="#2054ec" title="Свой цвет"></div>
+            </label>
+            <div class="row4">
+              <label class="f"><span>Поддерж., ₽/м²</span><input class="in" data-k="regular" type="number" min="1" placeholder="70"></label>
+              <label class="f"><span>Генеральн., ₽/м²</span><input class="in" data-k="deep" type="number" min="1" placeholder="130"></label>
+              <label class="f"><span>После рем., ₽/м²</span><input class="in" data-k="renovation" type="number" min="1" placeholder="170"></label>
+              <label class="f"><span>Мин. заказ, ₽</span><input class="in" data-k="minOrder" type="number" min="0" placeholder="2500"></label>
+            </div>
+            <div class="linkbox">
+              <input class="in" id="link" readonly placeholder="Ссылка появится после сохранения">
+              <button class="btn sm" type="button" id="copyLink">Копировать</button>
+              <a class="btn sm" id="openLink" target="_blank" rel="noopener">Открыть ↗</a>
+            </div>
+            <div class="frame" id="frame"><div class="ph" id="framePh">Сохраните лида — здесь появится предпросмотр его сайта</div></div>
+          </section>
+
+          <section class="card">
+            <h3>Сообщение с оффером</h3>
+            <label class="f"><span>Шаблон</span><select id="tpl"></select></label>
+            <textarea id="msg" rows="8"></textarea>
+            <div class="hint">Переменные в шаблоне: {компания} {город} {имя} {ссылка} {источник}. Текст можно поправить перед отправкой.</div>
+            <div class="actions">
+              <button class="btn send-wa" type="button" data-send="wa">WhatsApp</button>
+              <button class="btn send-tg" type="button" data-send="tg">Telegram</button>
+              <button class="btn send-max" type="button" data-send="max">MAX</button>
+              <button class="btn" type="button" data-send="copy">Копировать</button>
+            </div>
+            <div class="hint">WhatsApp откроется с готовым текстом. Для Telegram и MAX текст копируется и открывается чат — остаётся вставить и отправить.</div>
+            <div class="actions">
+              <button class="btn sm" type="button" id="tplSave">Сохранить текст как шаблон</button>
+              <button class="btn sm" type="button" id="tplReset">Вернуть стандартные шаблоны</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="savebar">
+        <button class="btn pri" type="submit" id="saveBtn">Сохранить и обновить сайт</button>
+        <span class="dirty" id="dirty" hidden>Есть несохранённые изменения</span>
+        <span class="sp" style="flex:1"></span>
+        <button class="btn danger sm" type="button" id="delBtn">Удалить лида</button>
+      </div>
+    </form>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict'
+  const $ = (s) => document.querySelector(s)
+  const $$ = (s) => [...document.querySelectorAll(s)]
+
+  const STAGES = { new: 'Новый', sent: 'Оффер отправлен', replied: 'Ответил', interested: 'Есть интерес', client: 'Клиент', rejected: 'Отказ' }
+  const CHANNELS = { wa: 'WhatsApp', tg: 'Telegram', max: 'MAX', copy: 'текст скопирован' }
+  const COLORS = ['#2054ec', '#0f9d74', '#16a34a', '#e2552d', '#d4237a', '#7c3aed', '#0e7490', '#111827']
+  const DEFAULTS = { status: 'new', accent: '#2054ec', regular: 70, deep: 130, renovation: 170, minOrder: 2500 }
+  const DEFAULT_TEMPLATES = [
+    { name: 'Первое касание', text: 'Здравствуйте{, имя}! Увидели «{компания}» {источник} и сделали для вас пример сайта — с вашим названием, контактами и калькулятором стоимости уборки:\n{ссылка}\n\nКлиент сам считает цену и оставляет заявку, а заявка сразу приходит вам в Telegram. Если понравится — запустим его на вашем домене за пару дней. Посмотрите?' },
+    { name: 'Напоминание', text: 'Здравствуйте{, имя}! Напомню про пример сайта для «{компания}»: {ссылка}\nУспели посмотреть? Цвета, цены и тексты подстроим под вас бесплатно.' },
+    { name: 'После просмотра', text: 'Здравствуйте{, имя}! Видим, что вы открывали пример сайта для «{компания}» 🙂 Если есть вопросы или хотите что-то поменять — напишите, всё подстроим. Ссылка: {ссылка}' },
+  ]
+  const SOURCES = [
+    [/2gis\./i, '2ГИС', 'в 2ГИС'],
+    [/yandex\.[a-z]+\/(maps|profile)|maps\.yandex|ya\.ru\/maps/i, 'Яндекс Карты', 'на Яндекс Картах'],
+    [/google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps/i, 'Google Карты', 'в Google Картах'],
+    [/(^|\/\/|\.)vk\.(com|ru)/i, 'ВКонтакте', 'во ВКонтакте'],
+    [/instagram\.com/i, 'Instagram', 'в Instagram'],
+    [/(^|\/\/)t\.me\//i, 'Telegram', 'в Telegram'],
+    [/avito\.ru/i, 'Авито', 'на Авито'],
+    [/profi\.ru/i, 'Профи.ру', 'на Профи.ру'],
+    [/youdo\.com/i, 'YouDo', 'на YouDo'],
+  ]
+
+  let KEY = localStorage.getItem('adm_key') || ''
+  let items = []
+  let cur = null // редактируемый лид
+  let dirty = false
+  let templates = loadTemplates()
+
+  // ---------- Утилиты ----------
+  const digits = (v) => String(v || '').replace(/\D/g, '')
+  const ruPhone = (v) => { const d = digits(v); return d.length === 11 && d[0] === '8' ? '7' + d.slice(1) : d.length === 10 ? '7' + d : d }
+  const fmtDate = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''
+  const ago = (iso) => {
+    if (!iso) return ''
+    const m = Math.round((Date.now() - Date.parse(iso)) / 60000)
+    if (m < 1) return 'только что'
+    if (m < 60) return m + ' мин назад'
+    const h = Math.round(m / 60)
+    if (h < 24) return h + ' ч назад'
+    return Math.round(h / 24) + ' дн назад'
+  }
+  const linkOf = (p) => (p && p.id ? location.origin + '/p/' + p.id : '')
+  const linesOf = (t) => String(t || '').split(/\n+/).map((s) => s.trim()).filter(Boolean)
+  const sourceOf = (url) => SOURCES.find(([re]) => re.test(url)) || [null, 'Сайт', 'в интернете']
+  const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e }
+
+  let toastTimer
+  function toast(text, err) {
+    const t = $('#toast')
+    t.textContent = text
+    t.className = 'toast show' + (err ? ' err' : '')
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => (t.className = 'toast'), err ? 4500 : 2600)
+  }
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); return true } catch {
+      const ta = el('textarea', { value: text }); document.body.append(ta); ta.select()
+      const ok = document.execCommand('copy'); ta.remove(); return ok
+    }
+  }
+
+  // ---------- API ----------
+  async function api(action, data = {}) {
+    const r = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Key': KEY },
+      body: JSON.stringify({ action, ...data }),
+    })
+    const j = await r.json().catch(() => ({}))
+    if (r.status === 401) { showLogin('Неверный пароль'); throw new Error('Нужен вход') }
+    if (!r.ok) throw new Error(j.error || 'Ошибка ' + r.status)
+    return j
+  }
+
+  // ---------- Вход ----------
+  function showLogin(msg) {
+    $('#login').hidden = false
+    $('#loginErr').textContent = msg || ''
+    setTimeout(() => $('#pass').focus(), 30)
+  }
+  $('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    KEY = $('#pass').value.trim()
+    try {
+      await api('ping')
+      localStorage.setItem('adm_key', KEY)
+      $('#login').hidden = true
+      $('#pass').value = ''
+      await refresh()
+    } catch (err) {
+      $('#loginErr').textContent = err.message === 'Нужен вход' ? 'Неверный пароль' : err.message
+    }
+  })
+  $('#logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('adm_key'); KEY = ''; items = []; cur = null; renderList(); showEditor(false); showLogin()
+  })
+
+  // ---------- Список ----------
+  async function refresh() {
+    const j = await api('list')
+    items = j.items || []
+    renderList()
+    renderStats()
+    if (cur && cur.id) {
+      const fresh = items.find((x) => x.id === cur.id)
+      if (fresh) { cur.views = fresh.views; cur.lastView = fresh.lastView; cur.formLeads = fresh.formLeads; renderViews() }
+    }
+  }
+
+  function renderStats() {
+    const c = (s) => items.filter((x) => x.status === s).length
+    const viewed = items.filter((x) => x.views > 0).length
+    $('#stats').replaceChildren(
+      ...[['Всего', items.length], ['Оффер отправлен', c('sent')], ['Открыли сайт', viewed], ['Интерес', c('interested') + c('replied')], ['Клиенты', c('client')]]
+        .map(([k, v]) => el('span', {}, k + ': ', el('b', { textContent: v })))
+    )
+  }
+
+  function renderList() {
+    const q = $('#q').value.trim().toLowerCase()
+    const st = $('#fStatus').value
+    const qd = digits(q)
+    const list = items.filter((p) => {
+      if (st && p.status !== st) return false
+      if (!q) return true
+      const hay = [p.name, p.city, p.contactName, p.address, p.notes].join(' ').toLowerCase()
+      return hay.includes(q) || (qd.length >= 3 && (digits(p.phone).includes(qd) || digits(p.wa).includes(qd)))
+    })
+    const box = $('#list')
+    if (!list.length) {
+      box.replaceChildren(el('div', { className: 'empty', style: 'margin-top:40px', textContent: items.length ? 'Ничего не найдено' : 'Лидов пока нет' }))
+      return
+    }
+    box.replaceChildren(...list.map((p) => {
+      const meta = el('div', { className: 'meta' }, el('span', { className: 'badge st-' + p.status, textContent: STAGES[p.status] || p.status }))
+      if (p.city) meta.append(el('span', { textContent: p.city }))
+      if (p.views) meta.append(el('span', { className: Date.now() - Date.parse(p.lastView) < 864e5 ? 'hot' : '', textContent: '👁 ' + p.views + ' · ' + ago(p.lastView) }))
+      if (p.formLeads) meta.append(el('span', { className: 'hot', textContent: '📝 заявка с сайта' }))
+      const row = el('div', { className: 'item' + (cur && cur.id === p.id ? ' on' : '') }, el('b', { textContent: p.name }), meta)
+      row.addEventListener('click', () => open(p.id))
+      return row
+    }))
+  }
+  $('#q').addEventListener('input', renderList)
+  $('#fStatus').addEventListener('change', renderList)
+
+  // ---------- Редактор ----------
+  function showEditor(on) { $('#editor').hidden = !on; $('#empty').hidden = on }
+
+  function confirmLeave() { return !dirty || confirm('Есть несохранённые изменения. Уйти без сохранения?') }
+
+  function open(id) {
+    if (cur && cur.id === id) return
+    if (!confirmLeave()) return
+    const p = items.find((x) => x.id === id)
+    if (!p) return
+    cur = structuredClone(p)
+    fill()
+  }
+
+  function newLead() {
+    if (!confirmLeave()) return
+    cur = { ...DEFAULTS }
+    fill()
+    $('#paste').focus()
+  }
+  $('#newBtn').addEventListener('click', newLead)
+  $('#newBtn2').addEventListener('click', newLead)
+
+  function fill() {
+    showEditor(true)
+    $$('[data-k]').forEach((i) => { const v = cur[i.dataset.k]; i.value = v == null ? (i.type === 'color' ? '#2054ec' : '') : v })
+    $('#paste').value = ''
+    $('#title').textContent = cur.name || 'Новый лид'
+    setDirty(false)
+    renderSwatches()
+    renderChips()
+    renderHistory()
+    renderLink()
+    renderViews()
+    renderMessage()
+    renderList()
+    $('#main').scrollTop = 0
+  }
+
+  function read() {
+    $$('[data-k]').forEach((i) => { cur[i.dataset.k] = i.type === 'number' ? (i.value === '' ? '' : Number(i.value)) : i.value })
+  }
+
+  function setDirty(on) { dirty = on; $('#dirty').hidden = !on }
+
+  $('#editor').addEventListener('input', (e) => {
+    if (e.target.id === 'msg' || e.target.id === 'paste' || e.target.id === 'tpl') return
+    read()
+    setDirty(true)
+    if (e.target.dataset.k === 'name') $('#title').textContent = cur.name || 'Новый лид'
+    if (e.target.dataset.k === 'links') renderChips()
+    if (e.target.dataset.k === 'accent') renderSwatches()
+    if (['name', 'city', 'contactName', 'links'].includes(e.target.dataset.k)) renderMessage()
+  })
+  $('#status').addEventListener('change', () => { read(); save() })
+
+  function renderSwatches() {
+    const box = $('#swatches')
+    const picker = box.querySelector('input[type=color]')
+    box.querySelectorAll('.sw').forEach((s) => s.remove())
+    COLORS.forEach((c) => {
+      const b = el('button', { type: 'button', className: 'sw' + (String(cur.accent).toLowerCase() === c ? ' on' : ''), title: c })
+      b.style.background = c
+      b.addEventListener('click', () => { picker.value = c; read(); setDirty(true); renderSwatches() })
+      box.insertBefore(b, picker)
+    })
+  }
+
+  function renderChips() {
+    $('#chips').replaceChildren(...linesOf(cur.links).filter((u) => /^https?:\/\//i.test(u)).map((u) =>
+      el('a', { className: 'chip', href: u, target: '_blank', rel: 'noopener', textContent: sourceOf(u)[1] + ' ↗' })
+    ))
+  }
+
+  function renderHistory() {
+    const h = [...(cur.history || [])].reverse()
+    const rows = h.map((e) => el('li', { textContent: fmtDate(e.at) + ' — оффер: ' + (CHANNELS[e.channel] || e.channel) + (e.template ? ' (' + e.template + ')' : '') }))
+    if (cur.createdAt) rows.push(el('li', { textContent: fmtDate(cur.createdAt) + ' — лид добавлен' }))
+    $('#hist').replaceChildren(...rows)
+  }
+
+  function renderLink() {
+    const url = linkOf(cur)
+    $('#link').value = url
+    $('#copyLink').disabled = !url
+    const a = $('#openLink')
+    if (url) { a.href = url + '?own=1'; a.removeAttribute('aria-disabled'); a.style.pointerEvents = '' } else { a.removeAttribute('href'); a.style.pointerEvents = 'none' }
+    const frame = $('#frame')
+    const old = frame.querySelector('iframe')
+    if (old) old.remove()
+    $('#framePh').hidden = Boolean(url)
+    if (url) {
+      const f = el('iframe', { src: url + '?own=1&t=' + Date.now(), title: 'Предпросмотр сайта', loading: 'lazy', tabIndex: -1 })
+      frame.append(f)
+      scaleFrame()
+    }
+  }
+  function scaleFrame() {
+    const frame = $('#frame'), f = frame.querySelector('iframe')
+    if (!f) return
+    const s = frame.clientWidth / 1280
+    f.style.transform = 'scale(' + s + ')'
+    f.style.height = Math.ceil(frame.clientHeight / s) + 'px'
+  }
+  addEventListener('resize', scaleFrame)
+
+  function renderViews() {
+    const b = $('#views')
+    if (!cur || !cur.id) { b.hidden = true; return }
+    b.hidden = false
+    b.textContent = cur.views ? '👁 открывали ' + cur.views + ' раз · ' + ago(cur.lastView) : 'ещё не открывали'
+    b.className = 'badge' + (cur.views ? ' st-interested' : '')
+  }
+
+  $('#copyLink').addEventListener('click', async () => { if (await copy($('#link').value)) toast('Ссылка скопирована') })
+
+  // ---------- Сохранение ----------
+  let saving = false
+  async function save() {
+    if (saving) return
+    read()
+    if (!String(cur.name || '').trim()) { toast('Укажите название компании', true); $('[data-k=name]').focus(); return }
+    saving = true
+    $('#saveBtn').disabled = true
+    try {
+      const isNew = !cur.id
+      const { item } = await api('save', { prospect: cur })
+      const extra = { views: cur.views || 0, lastView: cur.lastView || null, formLeads: cur.formLeads || 0 }
+      cur = { ...item, ...extra }
+      const i = items.findIndex((x) => x.id === cur.id)
+      if (i >= 0) items.splice(i, 1)
+      items.unshift(structuredClone(cur))
+      fill()
+      renderStats()
+      toast(isNew ? 'Лид сохранён, сайт-пример готов' : 'Сохранено, сайт обновлён')
+    } catch (e) {
+      toast(e.message, true)
+    } finally {
+      saving = false
+      $('#saveBtn').disabled = false
+    }
+  }
+  $('#editor').addEventListener('submit', (e) => { e.preventDefault(); save() })
+  addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !$('#editor').hidden) { e.preventDefault(); save() } })
+  addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = '' } })
+
+  $('#delBtn').addEventListener('click', async () => {
+    if (!cur.id) { cur = null; setDirty(false); showEditor(false); return }
+    if (!confirm('Удалить лида «' + cur.name + '»? Ссылка на его сайт перестанет работать.')) return
+    try {
+      await api('delete', { id: cur.id })
+      items = items.filter((x) => x.id !== cur.id)
+      cur = null; setDirty(false); showEditor(false); renderList(); renderStats()
+      toast('Лид удалён')
+    } catch (e) { toast(e.message, true) }
+  })
+
+  // ---------- Распознавание вставленного текста ----------
+  function parse(t) {
+    const out = {}
+    const ph = t.match(/(?:\+7|8)[\s\-‑()]*\d{3}[\s\-‑()]*\d{3}[\s\-‑]*\d{2}[\s\-‑]*\d{2}/)
+    if (ph) out.phone = ph[0].replace(/\s+/g, ' ').trim()
+    const em = t.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/)
+    if (em) out.email = em[0]
+    const urls = [...t.matchAll(/https?:\/\/[^\s<>"'«»]+/gi)].map((m) => m[0].replace(/[),.;!]+$/, ''))
+    if (urls.length) out.links = urls
+    const tg = t.match(/(?:t\.me\/|telegram\.me\/)([A-Za-z0-9_]{4,32})/) || t.match(/(?:^|\s)@([A-Za-z][A-Za-z0-9_]{3,31})\b/)
+    if (tg) out.tg = '@' + tg[1]
+    const wa = t.match(/wa\.me\/(\d{10,15})/)
+    if (wa) out.wa = '+' + wa[1]
+    const vk = urls.find((u) => /(^|\/\/|\.)vk\.(com|ru)\//i.test(u))
+    if (vk) out.vk = vk
+    const hrs = t.match(/(Круглосуточно|Ежедневно[^\n]{0,30}|(?:Пн|Вт|Ср|Чт|Пт|Сб|Вс)[^\n]{0,30}?\d{1,2}[:.]\d{2}\s*[–—-]\s*\d{1,2}[:.]\d{2})/i)
+    if (hrs) out.hours = hrs[0].trim()
+    const lines = t.split(/\n/).map((s) => s.trim()).filter(Boolean)
+    const addr = lines.find((l) => /(ул\.|улица|проспект|пр-т|пр-кт|пер\.|переулок|шоссе|бульвар|набережная|площадь|микрорайон)/i.test(l) && l.length < 160)
+    if (addr) out.address = addr
+    const name = lines.find((l) => l.length >= 2 && l.length <= 60 && !/https?:|@|\d{3}/.test(l) && !/(ул\.|улица|отзыв|рейтинг|открыто|закрыто|маршрут)/i.test(l))
+    if (name) out.name = name.replace(/^[«"]|[»"]$/g, '')
+    return out
+  }
+  $('#parseBtn').addEventListener('click', () => {
+    const t = $('#paste').value
+    if (!t.trim()) { toast('Вставьте текст карточки компании', true); return }
+    read()
+    const r = parse(t)
+    const got = []
+    for (const [k, v] of Object.entries(r)) {
+      if (k === 'links') {
+        const have = linesOf(cur.links)
+        const add = v.filter((u) => !have.includes(u))
+        if (add.length) { cur.links = [...have, ...add].join('\n'); got.push('ссылки') }
+      } else if (!String(cur[k] || '').trim()) { cur[k] = v; got.push({ name: 'название', phone: 'телефон', email: 'email', tg: 'Telegram', wa: 'WhatsApp', vk: 'ВКонтакте', hours: 'часы работы', address: 'адрес' }[k]) }
+    }
+    $$('[data-k]').forEach((i) => { const v = cur[i.dataset.k]; if (v != null && v !== '') i.value = v })
+    $('#title').textContent = cur.name || 'Новый лид'
+    renderChips(); renderMessage()
+    if (got.length) { setDirty(true); toast('Заполнено: ' + got.join(', ')) } else toast('Новых данных не нашлось')
+  })
+
+  // ---------- Шаблоны и отправка ----------
+  function loadTemplates() {
+    try { const t = JSON.parse(localStorage.getItem('adm_templates')); if (Array.isArray(t) && t.length) return t } catch {}
+    return structuredClone(DEFAULT_TEMPLATES)
+  }
+  function renderTemplates() {
+    const sel = $('#tpl'), keep = sel.value
+    sel.replaceChildren(...templates.map((t, i) => el('option', { value: String(i), textContent: t.name })))
+    if (keep && templates[keep]) sel.value = keep
+  }
+  function compose(text) {
+    const src = linesOf(cur.links).find((u) => /^https?:\/\//i.test(u))
+    const vars = {
+      'компания': cur.name || '',
+      'город': cur.city || '',
+      'ссылка': linkOf(cur) || '[сначала сохраните лида]',
+      'источник': src ? sourceOf(src)[2] : 'в интернете',
+      'имя': cur.contactName || '',
+    }
+    // {, имя} — запятая и имя, только если имя известно
+    return text
+      .replace(/\{,\s*имя\}/g, vars['имя'] ? ', ' + vars['имя'] : '')
+      .replace(/\{(компания|город|ссылка|источник|имя)\}/g, (_, k) => vars[k])
+  }
+  function renderMessage() {
+    renderTemplates()
+    const t = templates[$('#tpl').value] || templates[0]
+    $('#msg').value = compose(t.text)
+  }
+  $('#tpl').addEventListener('change', renderMessage)
+  $('#tplSave').addEventListener('click', () => {
+    const i = Number($('#tpl').value)
+    let text = $('#msg').value
+    // Возвращаем переменные на место конкретных данных лида
+    const link = linkOf(cur)
+    if (link) text = text.split(link).join('{ссылка}')
+    if (cur.name) text = text.split(cur.name).join('{компания}')
+    if (cur.contactName) text = text.split(', ' + cur.contactName).join('{, имя}')
+    if (cur.city) text = text.split(cur.city).join('{город}')
+    const name = prompt('Название шаблона (если не менять — перезапишется текущий):', templates[i].name)
+    if (name == null) return
+    if (name.trim() && name.trim() !== templates[i].name) { templates.push({ name: name.trim(), text }); $('#tpl').value = '' } else templates[i].text = text
+    localStorage.setItem('adm_templates', JSON.stringify(templates))
+    renderTemplates()
+    if (name.trim() && name.trim() !== templates[i].name) $('#tpl').value = String(templates.length - 1)
+    toast('Шаблон сохранён')
+  })
+  $('#tplReset').addEventListener('click', () => {
+    if (!confirm('Вернуть стандартные шаблоны? Свои шаблоны будут удалены.')) return
+    templates = structuredClone(DEFAULT_TEMPLATES)
+    localStorage.removeItem('adm_templates')
+    $('#tpl').value = '0'
+    renderMessage()
+  })
+
+  function chatUrl(ch, text) {
+    if (ch === 'wa') {
+      const d = ruPhone(cur.wa || cur.phone)
+      return d ? 'https://wa.me/' + d + '?text=' + encodeURIComponent(text) : ''
+    }
+    if (ch === 'tg') {
+      const v = String(cur.tg || '').trim()
+      if (/^https?:\/\//i.test(v)) return v
+      const u = v.replace(/^@/, '')
+      if (/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(u)) return 'https://t.me/' + u
+      const d = ruPhone(v || cur.phone)
+      return d ? 'https://t.me/+' + d : ''
+    }
+    if (ch === 'max') {
+      const v = String(cur.max || '').trim()
+      return /^https?:\/\//i.test(v) ? v : 'https://web.max.ru/'
+    }
+    return ''
+  }
+
+  $$('[data-send]').forEach((b) => b.addEventListener('click', async () => {
+    const ch = b.dataset.send
+    if (!cur.id || dirty) { await save(); if (!cur.id || dirty) return }
+    const text = $('#msg').value.trim()
+    if (!text) { toast('Сообщение пустое', true); return }
+    const url = chatUrl(ch, text)
+    if (ch !== 'copy' && !url) { toast(ch === 'wa' ? 'Укажите номер WhatsApp или телефон' : 'Укажите Telegram: @username, ссылку или номер', true); return }
+    // Окно открываем сразу по клику, иначе браузер его заблокирует
+    const win = url ? window.open(url, '_blank', 'noopener') : null
+    if (ch !== 'wa') {
+      const ok = await copy(text)
+      toast(ch === 'copy' ? (ok ? 'Текст скопирован' : 'Не удалось скопировать') : ok ? 'Текст скопирован — вставьте его в чат (Ctrl+V)' : 'Скопируйте текст вручную')
+    } else if (!win) toast('Разрешите всплывающие окна для этого сайта')
+    try {
+      const { item } = await api('log', { id: cur.id, channel: ch, template: (templates[$('#tpl').value] || {}).name })
+      Object.assign(cur, { status: item.status, history: item.history, updatedAt: item.updatedAt })
+      const i = items.findIndex((x) => x.id === cur.id)
+      if (i >= 0) Object.assign(items[i], { status: item.status, history: item.history, updatedAt: item.updatedAt })
+      $('#status').value = cur.status
+      renderHistory(); renderList(); renderStats()
+    } catch (e) { toast(e.message, true) }
+  }))
+
+  // ---------- Экспорт ----------
+  $('#exportBtn').addEventListener('click', () => {
+    const cols = [['name', 'Название'], ['city', 'Город'], ['status', 'Статус'], ['phone', 'Телефон'], ['email', 'Email'], ['contactName', 'Контакт'], ['tg', 'Telegram'], ['wa', 'WhatsApp'], ['max', 'MAX'], ['vk', 'ВКонтакте'], ['links', 'Ссылки'], ['link', 'Сайт-пример'], ['views', 'Просмотры'], ['notes', 'Заметки'], ['createdAt', 'Добавлен']]
+    const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
+    const rows = items.map((p) => cols.map(([k]) => q(k === 'status' ? STAGES[p.status] : k === 'link' ? linkOf(p) : k === 'createdAt' ? fmtDate(p.createdAt) : p[k])).join(';'))
+    const csv = '\ufeff' + [cols.map(([, t]) => q(t)).join(';'), ...rows].join('\r\n')
+    const a = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })), download: 'лиды-' + new Date().toISOString().slice(0, 10) + '.csv' })
+    document.body.append(a); a.click(); a.remove()
+  })
+
+  // ---------- Старт ----------
+  const stSel = $('#status'), fSel = $('#fStatus')
+  for (const [k, v] of Object.entries(STAGES)) { stSel.append(el('option', { value: k, textContent: v })); fSel.append(el('option', { value: k, textContent: v })) }
+  renderTemplates()
+  // Просмотры обновляются сами раз в минуту
+  setInterval(() => { if (KEY && !document.hidden) refresh().catch(() => {}) }, 60000)
+  if (!KEY) showLogin()
+  else refresh().catch((e) => { if (e.message !== 'Нужен вход') toast(e.message, true) })
+})()
+</script>
+</body>
+</html>

@@ -38,6 +38,7 @@ export default async function handler(req, res) {
     area: num(b.area, 0, 2000),
     extras: Array.isArray(b.extras) ? b.extras.slice(0, 15).map((x) => clean(x, 60)).filter(Boolean) : [],
     total: num(b.total, 0, 10_000_000),
+    preview: /^[a-z0-9-]{2,60}$/.test(b.preview || '') ? b.preview : '',
     createdAt: new Date().toISOString(),
     assignee: null,
     history: [],
@@ -69,6 +70,7 @@ export default async function handler(req, res) {
     })
     lead.messageId = msg.message_id
     if (hasRedis()) await saveLead(lead)
+    if (hasRedis() && lead.preview) await redis('HINCRBY', 'pvleads', lead.preview, 1)
 
     return res.status(200).json({ ok: true, id: lead.id })
   } catch (e) {
