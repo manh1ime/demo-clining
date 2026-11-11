@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Замените example.com на домен сайта
+Sitemap: https://example.com/sitemap.xml

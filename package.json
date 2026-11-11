@@ -1,5 +1,7 @@
 {
-  "name": "demo-clining",
+  "name": "cleaning-site",
+  "version": "1.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "description": "Сайт клининговой компании: калькулятор стоимости, 3D-сцена и приём заявок в Telegram"
 }
