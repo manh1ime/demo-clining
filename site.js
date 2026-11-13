@@ -2,7 +2,13 @@
 (() => {
   'use strict'
   const S = window.SITE
-  if (!S) return
+  if (!S || window.__PREVIEW_MISSING__) return
+  if (previewMode()) {
+    const note=document.createElement('div'); note.className='demo-banner'; note.setAttribute('role','note'); note.textContent='Концепт сайта • не официальный сайт компании. Тестовая форма: контакты не сохраняются и не отправляются.'; note.style.cssText='position:relative;z-index:20;padding:12px 24px;background:#112632;color:white;font:14px/1.5 system-ui;text-align:center'; document.body.prepend(note);
+    const nav=document.querySelector('.navwrap'); if(nav) nav.style.top=note.offsetHeight+'px';
+    const btn=document.querySelector('.form-btn'); if(btn) btn.firstChild.textContent='Протестировать заявку ';
+  }
+  function previewMode(){return S.preview || S.site?.demo !== false}
   const preview = S.preview || ''
   const get = (path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), S)
   const money = (n) => new Intl.NumberFormat('ru-RU').format(n) + ' ₽'
@@ -32,6 +38,9 @@
   document.title = fill(document.title)
   document.querySelectorAll('meta[name="description"],meta[property^="og:"]').forEach((m) => m.setAttribute('content', fill(m.getAttribute('content'))))
 
+  if (S.site?.demo !== false && !preview) {
+    const r=document.createElement('meta');r.name='robots';r.content='noindex,nofollow';document.head.append(r)
+  }
   if (preview) {
     // Пример для лида: не индексируем, ссылки ведут внутри примера
     const r = document.createElement('meta')

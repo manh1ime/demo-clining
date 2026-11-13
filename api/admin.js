@@ -2,6 +2,7 @@
 // Доступ только по паролю из переменной ADMIN_PASSWORD. Данные хранятся в Redis (Upstash).
 import crypto from 'node:crypto'
 import { hasRedis, redis } from './_lib.js'
+import { authenticated, checkPassword, sameOrigin, session, limit, ipKey } from './_auth.js'
 
 const STAGES = ['new', 'sent', 'replied', 'interested', 'client', 'rejected']
 const CHANNELS = ['wa', 'tg', 'max', 'copy']
@@ -30,11 +31,6 @@ const slugify = (name) =>
     .slice(0, 32)
     .replace(/-+$/, '')
 
-const safeEqual = (a, b) => {
-  const A = Buffer.from(String(a))
-  const B = Buffer.from(String(b))
-  return A.length === B.length && crypto.timingSafeEqual(A, B)
-}
 
 function normalize(b, prev) {
   const now = new Date().toISOString()
@@ -98,7 +94,7 @@ export default async function handler(req, res) {
   }
   const pass = process.env.ADMIN_PASSWORD
   if (!pass) return res.status(503).json({ error: 'Приложение выключено: задайте ADMIN_PASSWORD в настройках Vercel' })
-  if (!safeEqual(req.headers['x-admin-key'] || '', pass)) return res.status(401).json({ error: 'Неверный пароль' })
+  if (!sameOrigin(req)) return res.status(403).json({ error: 'Запрос запрещён' })
   if (!hasRedis()) return res.status(503).json({ error: 'Подключите Redis (Vercel → Storage → Upstash Redis)' })
 
   let b = req.body
@@ -108,23 +104,46 @@ export default async function handler(req, res) {
   b = b || {}
 
   try {
+    if (b.action === 'login') {
+      if (!(await limit('login:'+ipKey(req), 10, 900))) return res.status(429).json({ error: 'Слишком много попыток. Повторите через 15 минут.' })
+      if (!checkPassword(b.password || '')) return res.status(401).json({ error: 'Неверный пароль' })
+      session(res)
+      return res.status(200).json({ ok: true })
+    }
+    if (b.action === 'logout') { session(res, true); return res.status(200).json({ok:true}) }
+    if (!authenticated(req)) return res.status(401).json({ error: 'Войдите в приложение' })
     switch (b.action) {
       case 'ping':
         return res.status(200).json({ ok: true })
 
       case 'list': {
-        const ids = (await redis('ZREVRANGE', 'prospects', 0, 1999)) || []
-        const raws = ids.length ? await redis('MGET', ...ids.map((id) => `prospect:${id}`)) : []
+        let offset = Math.max(0, Number.parseInt(b.offset,10) || 0)
+        const total = Number(await redis('ZCARD', 'prospects'))
+        const query = line(b.query,100).toLowerCase(), stage = STAGES.includes(b.stage) ? b.stage : ''
+        const digits = query.replace(/\D/g,'')
+        const found=[]
+        // Read in bounded batches, including companies beyond the first page.
+        while(offset < total && found.length < 100) {
+          const ids=(await redis('ZREVRANGE','prospects',offset,offset+199)) || []
+          if(!ids.length)break
+          const raws=await redis('MGET',...ids.map(id=>'prospect:'+id))
+          for(let i=0;i<ids.length;i++) {
+            offset++
+            if(!raws[i])continue
+            const p=JSON.parse(raws[i])
+            const hay=[p.name,p.city,p.phone,p.wa,p.contactName,p.address,p.notes].join(' ').toLowerCase()
+            const matches=!query || hay.includes(query) || (digits.length>=3 && [p.phone,p.wa].some(v=>String(v||'').replace(/\D/g,'').includes(digits)))
+            if((!stage || p.status===stage)&&matches)found.push(p)
+            if(found.length>=100)break
+          }
+        }
         const [views, last, leads] = await Promise.all([
           redis('HGETALL', 'pv'),
           redis('HGETALL', 'pvlast'),
           redis('HGETALL', 'pvleads'),
         ]).then((r) => r.map(hashToObj))
-        const items = raws.filter(Boolean).map((raw) => {
-          const p = JSON.parse(raw)
-          return { ...p, views: Number(views[p.id] || 0), lastView: last[p.id] || null, formLeads: Number(leads[p.id] || 0) }
-        })
-        return res.status(200).json({ ok: true, items })
+        const items = found.map(p => ({...p,views:Number(views[p.id]||0),lastView:last[p.id]||null,formLeads:Number(leads[p.id]||0)}))
+        return res.status(200).json({ ok: true, items, total, nextOffset: offset < total ? offset : null })
       }
 
       case 'save': {
@@ -134,7 +153,7 @@ export default async function handler(req, res) {
         if (!p.id) {
           const base = slugify(p.name) || 'company'
           for (let i = 0; i < 5 && !p.id; i++) {
-            const id = `${base}-${crypto.randomBytes(3).toString('hex').slice(0, 4)}`
+            const id = `${base}-${crypto.randomBytes(10).toString('hex')}`
             const ok = await redis('SET', `prospect:${id}`, JSON.stringify({ ...p, id }), 'NX')
             if (ok) p.id = id
           }
@@ -149,8 +168,8 @@ export default async function handler(req, res) {
         const p = await getProspect(b.id)
         if (!p) throw new UserError('Лид не найден')
         const channel = CHANNELS.includes(b.channel) ? b.channel : 'copy'
-        p.history = [...(p.history || []), { at: new Date().toISOString(), type: 'message', channel, template: line(b.template, 60) }].slice(-50)
-        if (p.status === 'new') p.status = 'sent'
+        p.history = [...(p.history || []), { at: new Date().toISOString(), type: b.confirmed === true ? 'sent' : 'prepared', channel, template: line(b.template, 60) }].slice(-50)
+        if (b.confirmed === true && p.status === 'new') p.status = 'sent'
         p.updatedAt = new Date().toISOString()
         await putProspect(p)
         return res.status(200).json({ ok: true, item: p })
@@ -170,6 +189,6 @@ export default async function handler(req, res) {
   } catch (e) {
     if (e instanceof UserError) return res.status(400).json({ error: e.message })
     console.error(e)
-    return res.status(500).json({ error: 'Ошибка сервера: ' + String(e.message || e) })
+    return res.status(500).json({ error: 'Сервис временно недоступен. Повторите позже.' })
   }
 }

@@ -4,7 +4,8 @@ import { tg, hasRedis, redis, getLead, saveLead, renderLead, keyboard, isManager
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(200).send('ok')
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET
-  if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) return res.status(401).send('unauthorized')
+  if (!secret) return res.status(503).send('not configured')
+  if (req.headers['x-telegram-bot-api-secret-token'] !== secret) return res.status(401).send('unauthorized')
 
   const update = req.body || {}
   try {

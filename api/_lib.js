@@ -44,7 +44,7 @@ export async function redis(...cmd) {
     body: JSON.stringify(cmd.map(String)),
   })
   const j = await r.json().catch(() => ({}))
-  if (j.error) throw new Error('Redis: ' + j.error)
+  if (!r.ok || j.error || !Object.hasOwn(j, 'result')) throw new Error('Redis unavailable')
   return j.result
 }
 

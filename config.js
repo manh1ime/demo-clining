@@ -19,6 +19,7 @@ window.SITE = {
   city: '[Город]',
 
   site: {
+    demo: true,                       // false только на настоящем сайте клиента
     url: 'https://example.com',        // адрес сайта без слэша в конце
   },
 
