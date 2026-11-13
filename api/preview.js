@@ -12,7 +12,8 @@ function tgUrl(v) {
   if (!v) return ''
   if (isUrl(v)) return v
   const m = v.replace(/^@/, '').match(/^[A-Za-z0-9_]{4,32}$/)
-  return m ? 'https://t.me/' + m[0] : ''
+  if (m) return 'https://t.me/' + m[0]
+  const phone=ru(digits(v)); return phone.length >= 10 && phone.length <= 15 ? 'https://t.me/+'+phone : ''
 }
 
 function siteData(p) {
@@ -24,6 +25,7 @@ function siteData(p) {
   if (p.bottleLine1) brand.bottleLine1 = p.bottleLine1
   return {
     brand,
+    site: { demo: true },
     city: p.city || '',
     contacts: {
       phone: p.phone || '',
@@ -32,7 +34,7 @@ function siteData(p) {
       address: p.address || '',
       hours: p.hours || '',
       telegram: tgUrl(p.tg),
-      whatsapp: p.wa && wa ? 'https://wa.me/' + wa : '',
+      whatsapp: wa ? 'https://wa.me/' + wa : '',
       vk: isUrl(p.vk) ? p.vk : '',
     },
     legal: { companyName: name, inn: '', ogrn: '', legalAddress: p.address || '', privacyEmail: p.email || '', privacyDate: '' },
@@ -40,21 +42,23 @@ function siteData(p) {
   }
 }
 
+const missing = `window.__PREVIEW_MISSING__=true;addEventListener('DOMContentLoaded',function(){document.title='Пример недоступен';document.body.replaceChildren();var m=document.createElement('main');m.style.cssText='font:18px/1.6 system-ui;max-width:600px;margin:15vh auto;padding:24px';var h=document.createElement('h1');h.textContent='Пример недоступен';var p=document.createElement('p');p.textContent='Ссылка устарела или пример ещё не опубликован. Обратитесь к отправителю.';m.append(h,p);document.body.append(m)})`;
+
 const BOTS = /bot|crawl|spider|slurp|preview|facebookexternalhit|telegram|whatsapp|vkshare|yandex|headless/i
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
   res.setHeader('Cache-Control', 'no-store')
   const slug = String(req.query?.slug || '').toLowerCase()
-  if (!/^[a-z0-9-]{2,60}$/.test(slug) || !hasRedis()) return res.status(200).send('/* пример не найден */')
+  if (!process.env.ADMIN_PASSWORD || !/^[a-z0-9-]{2,60}$/.test(slug) || !hasRedis()) return res.status(200).send(missing)
 
   try {
     const raw = await redis('GET', `prospect:${slug}`)
-    if (!raw) return res.status(200).send('/* пример не найден */')
+    if (!raw) return res.status(200).send(missing)
     const p = JSON.parse(raw)
 
     // Считаем просмотры компании (свои просмотры из приложения и ботов не считаем)
-    const own = req.query?.own === '1'
+    const own = req.query?.own === '1' || req.query?.page === 'privacy'
     if (!own && !BOTS.test(String(req.headers['user-agent'] || ''))) {
       await redis('HINCRBY', 'pv', slug, 1)
       await redis('HSET', 'pvlast', slug, new Date().toISOString())
@@ -66,6 +70,6 @@ export default async function handler(req, res) {
     )
   } catch (e) {
     console.error(e)
-    return res.status(200).send('/* ошибка загрузки примера */')
+    return res.status(200).send(missing)
   }
 }

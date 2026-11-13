@@ -4,6 +4,7 @@ export const STATUSES = {
   new: { label: '🆕 Новая' },
   work: { label: '🧹 В работе' },
   called: { label: '📞 Связались' },
+  scheduled: { label: '📅 Согласована' },
   done: { label: '✅ Выполнена' },
   cancel: { label: '❌ Отменена' },
 }
@@ -44,7 +45,7 @@ export async function redis(...cmd) {
     body: JSON.stringify(cmd.map(String)),
   })
   const j = await r.json().catch(() => ({}))
-  if (j.error) throw new Error('Redis: ' + j.error)
+  if (!r.ok || j.error || !Object.hasOwn(j, 'result')) throw new Error('Redis unavailable')
   return j.result
 }
 
@@ -53,10 +54,31 @@ export async function getLead(id) {
   return raw ? JSON.parse(raw) : null
 }
 
+// Atomic record + open-list update. CAS prevents two managers overwriting one another.
+const SAVE_LEAD = `-- SAVE_LEAD
+redis.call('SET',KEYS[1],ARGV[1])
+if ARGV[2]=='closed' then redis.call('ZREM',KEYS[2],ARGV[3]) else redis.call('ZADD',KEYS[2],ARGV[4],ARGV[3]) end
+return 1`
+const CAS_LEAD = `-- CAS_LEAD
+if redis.call('GET',KEYS[1]) ~= ARGV[1] then return 0 end
+redis.call('SET',KEYS[1],ARGV[2])
+if ARGV[3]=='closed' then redis.call('ZREM',KEYS[2],ARGV[4]) else redis.call('ZADD',KEYS[2],ARGV[5],ARGV[4]) end
+return 1`
+const storageArgs = l => [JSON.stringify(l), ['done','cancel'].includes(l.status)?'closed':'open',l.id,Date.parse(l.createdAt)]
 export async function saveLead(lead) {
-  await redis('SET', `lead:${lead.id}`, JSON.stringify(lead))
-  if (lead.status === 'done' || lead.status === 'cancel') await redis('ZREM', 'leads:open', lead.id)
-  else await redis('ZADD', 'leads:open', Date.parse(lead.createdAt), lead.id)
+  await redis('EVAL',SAVE_LEAD,2,`lead:${lead.id}`,'leads:open',...storageArgs(lead))
+}
+export async function mutateLead(id, change) {
+  for(let attempt=0;attempt<4;attempt++) {
+    const raw=await redis('GET',`lead:${id}`)
+    if(!raw)throw new Error('Заявка не найдена')
+    const lead=JSON.parse(raw)
+    const changed=change(lead)
+    if(changed===false)return lead
+    lead.revision=Number(lead.revision||0)+1
+    if(Number(await redis('EVAL',CAS_LEAD,2,`lead:${id}`,'leads:open',raw,...storageArgs(lead)))===1)return lead
+  }
+  throw new Error('Заявка меняется другим менеджером. Откройте её заново.')
 }
 
 // ---------- Форматирование ----------
@@ -70,6 +92,7 @@ export function renderLead(lead) {
   const s = STATUSES[lead.status] || STATUSES.new
   const lines = [
     `<b>${esc(LEAD_TITLE)} #${esc(lead.id)}</b> · ${s.label}`,
+    ...(lead.isTest ? ['🧪 ЖИВОЙ ТЕСТ — не настоящий заказ'] : []),
     '',
     `👤 ${esc(lead.name)}`,
     `📞 ${esc(lead.phone)}`,
@@ -78,30 +101,29 @@ export function renderLead(lead) {
   if (lead.extras?.length) lines.push(`➕ ${esc(lead.extras.join(', '))}`)
   if (lead.total) lines.push(`💰 ${money(lead.total)} (предварительно)`)
   if (lead.date) lines.push(`📅 Удобная дата: ${fmtDay(lead.date)}`)
-  if (lead.comment) lines.push(`💬 ${esc(lead.comment)}`)
+  if (lead.comment) lines.push(`💬 ${esc(lead.comment.slice(0,500))}`)
+  if (lead.scheduledAt) lines.push(`📅 Согласовано: ${esc(lead.scheduledAt)} (${esc(DISPLAY_TZ)})`)
+  if (lead.finalPrice != null) lines.push(`💳 Согласованная цена: ${money(lead.finalPrice)}`)
+  if (lead.notes?.length) lines.push('📝 '+esc(lead.notes.slice(-2).map(n=>n.text).join(' / ')))
+  if (lead.cancelReason) lines.push('Причина отмены: '+esc(lead.cancelReason))
   if (lead.preview) lines.push(`🔎 Тестовая заявка с примера сайта: /p/${esc(lead.preview)}`)
   lines.push('', `🕒 Создана ${fmtTime(lead.createdAt)}`)
   if (lead.assignee) lines.push(`👷 Ответственный: ${esc(lead.assignee)}`)
-  const h = (lead.history || []).slice(-6)
+  const h = (lead.history || []).slice(-4)
   if (h.length) {
     lines.push('', '<i>История:</i>')
-    for (const e of h) lines.push(`• ${fmtTime(e.at)} — ${STATUSES[e.status]?.label || e.status} (${esc(e.by)})`)
+    for (const e of h) lines.push(`• ${fmtTime(e.at)} — ${STATUSES[e.status]?.label || e.status} (${esc(e.by)})${e.detail?' — '+esc(e.detail.slice(0,120)):''}`)
   }
   return lines.join('\n')
 }
 
-const btn = (id, status, text) => ({ text, callback_data: `st:${id}:${status}` })
-
+const btn = (id, status, text) => ({text,callback_data:`${['done','cancel'].includes(status)?'cf':'st'}:${id}:${status}`})
 export function keyboard(lead) {
-  const id = lead.id
-  switch (lead.status) {
-    case 'new':
-      return { inline_keyboard: [[btn(id, 'work', '🧹 Взять в работу')], [btn(id, 'cancel', '❌ Отказ')]] }
-    case 'work':
-      return { inline_keyboard: [[btn(id, 'called', '📞 Связались'), btn(id, 'done', '✅ Выполнена')], [btn(id, 'cancel', '❌ Отмена')]] }
-    case 'called':
-      return { inline_keyboard: [[btn(id, 'done', '✅ Выполнена')], [btn(id, 'cancel', '❌ Отмена')]] }
-    default:
-      return { inline_keyboard: [[btn(id, 'work', '↩️ Вернуть в работу')]] }
-  }
+  const id=lead.id
+  if(lead.status==='new')return {inline_keyboard:[[btn(id,'work','🧹 Взять в работу')],[btn(id,'cancel','❌ Отмена')]]}
+  if(['done','cancel'].includes(lead.status))return {inline_keyboard:[[btn(id,'work','↩️ Вернуть в работу')]]}
+  const rows=[]
+  if(lead.status==='work')rows.push([btn(id,'called','📞 Связались')])
+  rows.push([btn(id,'done','✅ Выполнена'),btn(id,'cancel','❌ Отмена')])
+  return {inline_keyboard:rows}
 }

@@ -1,7 +1,12 @@
 {
   "name": "cleaning-site",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "Сайт клининговой компании: калькулятор стоимости, 3D-сцена и приём заявок в Telegram"
+  "description": "Клининговый шаблон и CRM с персональными демо",
+  "scripts": {
+    "test": "node --test tests/api.test.mjs tests/bot.test.mjs",
+    "dev": "node scripts/dev-server.mjs",
+    "check": "node scripts/check-config.mjs"
+  }
 }

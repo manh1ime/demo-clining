@@ -1,8 +1,5 @@
 User-agent: *
-Allow: /
-Disallow: /api/
 Disallow: /admin
+Disallow: /api/
 Disallow: /p/
-
-# Замените example.com на домен сайта
-Sitemap: https://example.com/sitemap.xml
+# На настоящем сайте добавьте: Sitemap: https://ВАШ-ДОМЕН/sitemap.xml

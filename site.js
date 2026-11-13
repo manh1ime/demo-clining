@@ -2,7 +2,15 @@
 (() => {
   'use strict'
   const S = window.SITE
-  if (!S) return
+  if (!S || window.__PREVIEW_MISSING__) return
+  const liveTest=new URLSearchParams(location.search).get('live-test')==='1' && !S.preview
+  window.__LIVE_TEST__=liveTest
+  if (previewMode() || liveTest) {
+    const note=document.createElement('div'); note.className='demo-banner'; note.setAttribute('role','note'); note.textContent=liveTest?'ЖИВОЙ ТЕСТ: заявка будет сохранена и отправлена в настоящий Telegram. Только тестовые данные. Требуются вход в /admin и включённый режим проверки.':'Концепт сайта • не официальный сайт компании. Тестовая форма: контакты не сохраняются и не отправляются.'; note.style.cssText='position:relative;z-index:20;padding:12px 24px;background:#112632;color:white;font:14px/1.5 system-ui;text-align:center'; document.body.prepend(note);
+    const nav=document.querySelector('.navwrap'); if(nav) nav.style.top=note.offsetHeight+'px';
+    const btn=document.querySelector('.form-btn'); if(btn) btn.firstChild.textContent=liveTest?'Отправить тест в Telegram ':'Протестировать заявку ';
+  }
+  function previewMode(){return S.preview || S.site?.demo !== false}
   const preview = S.preview || ''
   const get = (path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), S)
   const money = (n) => new Intl.NumberFormat('ru-RU').format(n) + ' ₽'
@@ -12,7 +20,7 @@
     const key = el.dataset.cfg
     const v = key === 'year' ? String(new Date().getFullYear()) : get(key)
     if (v != null && v !== '') el.textContent = v
-    else if (preview && !key.startsWith('legal.')) el.hidden = true
+    else if ((preview || S.site?.demo !== false) && !key.startsWith('legal.')) el.hidden = true
   })
 
   // Ссылки: data-cfg-href="tel:contacts.phoneHref" | "mailto:contacts.email" | "contacts.telegram"
@@ -20,8 +28,10 @@
     const m = /^(tel:|mailto:)?(.+)$/.exec(el.dataset.cfgHref)
     const v = get(m[2])
     if (v) el.href = (m[1] || '') + v
-    else if (el.hasAttribute('data-cfg-hide-empty') || preview) el.hidden = true
+    else if (el.hasAttribute('data-cfg-hide-empty') || preview || S.site?.demo !== false) el.hidden = true
   })
+
+  if (S.site?.demo !== false && !preview) { const legal=document.querySelector('.footer-end > span'); if(legal)legal.textContent='© '+new Date().getFullYear()+' '+S.brand.name+' · Вымышленная компания, учебный пример' }
 
   // Заголовок и мета-теги
   const fill = (t) =>
@@ -32,6 +42,9 @@
   document.title = fill(document.title)
   document.querySelectorAll('meta[name="description"],meta[property^="og:"]').forEach((m) => m.setAttribute('content', fill(m.getAttribute('content'))))
 
+  if (S.site?.demo !== false && !preview) {
+    const r=document.createElement('meta');r.name='robots';r.content='noindex,nofollow';document.head.append(r)
+  }
   if (preview) {
     // Пример для лида: не индексируем, ссылки ведут внутри примера
     const r = document.createElement('meta')

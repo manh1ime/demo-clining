@@ -81,6 +81,9 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
 .login h2{margin:0;font-size:20px}
 .err-text{color:var(--red);font-size:13px;min-height:18px}
 @media(max-width:900px){.layout{grid-template-columns:1fr;height:auto}.side{max-height:42vh}.grid{grid-template-columns:1fr}.stats{display:none}.main{overflow:visible}}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2054ec;outline-offset:3px}
+.btn{min-height:44px}.hint,.badge,.item .meta,label.f>span{font-size:14px}.item{width:100%;display:block;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;font:inherit;color:inherit}.item.on{background:#e8eefc}
+@media(max-width:600px){.savebar{position:static}.main{padding:16px 16px 0}.grid{display:block}.col{margin-bottom:16px}.row,.row4{grid-template-columns:1fr 1fr;min-width:0}.card{padding:12px;min-width:0}.in{min-width:0}.top{height:auto;min-height:64px;flex-wrap:wrap;padding:8px}.layout{height:auto}.savebar{margin:16px -16px 0;padding:12px 16px}.linkbox{flex-wrap:wrap}.linkbox .in{flex-basis:100%}.side{max-height:45vh}.stats{display:none}}
 </style>
 </head>
 <body>
@@ -98,7 +101,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
   <h1>🧽 Лиды</h1>
   <div class="stats" id="stats"></div>
   <div class="sp"></div>
-  <button class="btn sm" id="exportBtn" title="Выгрузить в CSV для Excel">Экспорт</button>
+  <button class="btn sm" id="exportBtn" title="Экспорт всех компаний с учётом поиска и статуса">Экспорт</button>
   <button class="btn sm" id="logoutBtn">Выйти</button>
   <button class="btn pri" id="newBtn">+ Новый лид</button>
 </header>
@@ -109,7 +112,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
       <input class="in" id="q" type="search" placeholder="Поиск: название, город, телефон">
       <select id="fStatus"><option value="">Все статусы</option></select>
     </div>
-    <div class="list" id="list"></div>
+    <div class="list" id="list"></div><div style="padding:12px"><div class="hint" id="loaded" aria-live="polite"></div><button class="btn" id="loadMore" hidden>Загрузить ещё 100</button></div>
   </aside>
 
   <main class="main" id="main">
@@ -158,7 +161,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
               <label class="f"><span>Telegram (@username, ссылка или номер)</span><input class="in" data-k="tg" maxlength="80" placeholder="@company"></label>
             </div>
             <div class="row">
-              <label class="f"><span>MAX (ссылка на чат или номер)</span><input class="in" data-k="max" maxlength="160"></label>
+              <label class="f"><span>MAX (полная ссылка на чат)</span><input class="in" data-k="max" maxlength="160"></label>
               <label class="f"><span>ВКонтакте (ссылка)</span><input class="in" data-k="vk" maxlength="160" placeholder="https://vk.com/..."></label>
             </div>
             <div class="hint">Telegram, WhatsApp и ВКонтакте также покажутся в подвале их сайта-примера.</div>
@@ -206,7 +209,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
               <button class="btn send-max" type="button" data-send="max">MAX</button>
               <button class="btn" type="button" data-send="copy">Копировать</button>
             </div>
-            <div class="hint">WhatsApp откроется с готовым текстом. Для Telegram и MAX текст копируется и открывается чат — остаётся вставить и отправить.</div>
+            <div class="actions"><button class="btn sm" type="button" id="confirmSent">✓ Подтвердить, что отправлено</button></div><div class="hint">Открытие чата не означает отправку. После отправки подтвердите её кнопкой выше. WhatsApp откроется с готовым текстом. Для Telegram и MAX текст копируется и открывается чат — остаётся вставить и отправить.</div>
             <div class="actions">
               <button class="btn sm" type="button" id="tplSave">Сохранить текст как шаблон</button>
               <button class="btn sm" type="button" id="tplReset">Вернуть стандартные шаблоны</button>
@@ -240,7 +243,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
   const DEFAULT_TEMPLATES = [
     { name: 'Первое касание', text: 'Здравствуйте{, имя}! Увидели «{компания}» {источник} и сделали для вас пример сайта — с вашим названием, контактами и калькулятором стоимости уборки:\n{ссылка}\n\nКлиент сам считает цену и оставляет заявку, а заявка сразу приходит вам в Telegram. Если понравится — запустим его на вашем домене за пару дней. Посмотрите?' },
     { name: 'Напоминание', text: 'Здравствуйте{, имя}! Напомню про пример сайта для «{компания}»: {ссылка}\nУспели посмотреть? Цвета, цены и тексты подстроим под вас бесплатно.' },
-    { name: 'После просмотра', text: 'Здравствуйте{, имя}! Видим, что вы открывали пример сайта для «{компания}» 🙂 Если есть вопросы или хотите что-то поменять — напишите, всё подстроим. Ссылка: {ссылка}' },
+    { name: 'После просмотра', text: 'Здравствуйте{, имя}! Хотели уточнить, подходит ли «{компания}» такой вариант сайта: {ссылка}\nМожем обсудить оформление, цены и запуск на вашем домене. Если предложение неактуально — больше писать не будем.' },
   ]
   const SOURCES = [
     [/2gis\./i, '2ГИС', 'в 2ГИС'],
@@ -254,7 +257,10 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     [/youdo\.com/i, 'YouDo', 'на YouDo'],
   ]
 
-  let KEY = localStorage.getItem('adm_key') || ''
+  localStorage.removeItem('adm_key') // migrate away from persistent passwords
+  let KEY = true // session presence is checked by server
+  let totalItems = 0, nextOffset = null, refreshSequence = 0
+  let msgDirty = false
   let items = []
   let cur = null // редактируемый лид
   let dirty = false
@@ -297,7 +303,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
   async function api(action, data = {}) {
     const r = await fetch('/api/admin', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Admin-Key': KEY },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'cleaning-admin' },
       body: JSON.stringify({ action, ...data }),
     })
     const j = await r.json().catch(() => ({}))
@@ -316,8 +322,8 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     e.preventDefault()
     KEY = $('#pass').value.trim()
     try {
-      await api('ping')
-      localStorage.setItem('adm_key', KEY)
+      await api('login', { password: KEY })
+      KEY = true
       $('#login').hidden = true
       $('#pass').value = ''
       await refresh()
@@ -325,14 +331,23 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
       $('#loginErr').textContent = err.message === 'Нужен вход' ? 'Неверный пароль' : err.message
     }
   })
-  $('#logoutBtn').addEventListener('click', () => {
+  $('#logoutBtn').addEventListener('click', async () => {
+    await api('logout').catch(() => {})
     localStorage.removeItem('adm_key'); KEY = ''; items = []; cur = null; renderList(); showEditor(false); showLogin()
   })
 
+  $('#loadMore').addEventListener('click', async () => {
+    const btn=$('#loadMore'); btn.disabled=true
+    try { const j=await api('list',{offset:nextOffset,query:$('#q').value,stage:$('#fStatus').value}); items.push(...j.items.filter(p=>!items.some(x=>x.id===p.id))); nextOffset=j.nextOffset; totalItems=j.total; btn.hidden=nextOffset==null; $('#loaded').textContent='Загружено '+items.length+' из '+totalItems+'; поиск и экспорт — по загруженным'; renderList(); renderStats() } catch(e){toast(e.message,true)} finally{btn.disabled=false}
+  })
   // ---------- Список ----------
   async function refresh() {
-    const j = await api('list')
+    const sequence=++refreshSequence
+    const j = await api('list',{query:$('#q').value,stage:$('#fStatus').value})
+    if(sequence!==refreshSequence)return
+    totalItems = j.total || 0; nextOffset = j.nextOffset
     items = j.items || []
+    $('#loadMore').hidden = nextOffset == null; $('#loaded').textContent = 'Загружено '+items.length+' из '+totalItems+'; поиск и экспорт — по загруженным' 
     renderList()
     renderStats()
     if (cur && cur.id) {
@@ -345,12 +360,14 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     const c = (s) => items.filter((x) => x.status === s).length
     const viewed = items.filter((x) => x.views > 0).length
     $('#stats').replaceChildren(
-      ...[['Всего', items.length], ['Оффер отправлен', c('sent')], ['Открыли сайт', viewed], ['Интерес', c('interested') + c('replied')], ['Клиенты', c('client')]]
+      ...[['Загружено', items.length], ['Оффер отправлен', c('sent')], ['Открыли сайт', viewed], ['Интерес', c('interested') + c('replied')], ['Клиенты', c('client')]]
         .map(([k, v]) => el('span', {}, k + ': ', el('b', { textContent: v })))
     )
   }
 
   function renderList() {
+    $('#loaded').textContent='В базе: '+totalItems+' • Загружено: '+items.length
+    $('#loadMore').hidden=nextOffset==null
     const q = $('#q').value.trim().toLowerCase()
     const st = $('#fStatus').value
     const qd = digits(q)
@@ -370,13 +387,14 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
       if (p.city) meta.append(el('span', { textContent: p.city }))
       if (p.views) meta.append(el('span', { className: Date.now() - Date.parse(p.lastView) < 864e5 ? 'hot' : '', textContent: '👁 ' + p.views + ' · ' + ago(p.lastView) }))
       if (p.formLeads) meta.append(el('span', { className: 'hot', textContent: '📝 заявка с сайта' }))
-      const row = el('div', { className: 'item' + (cur && cur.id === p.id ? ' on' : '') }, el('b', { textContent: p.name }), meta)
+      const row = el('button', { type:'button', className: 'item' + (cur && cur.id === p.id ? ' on' : '') }, el('b', { textContent: p.name }), meta)
       row.addEventListener('click', () => open(p.id))
       return row
     }))
   }
-  $('#q').addEventListener('input', renderList)
-  $('#fStatus').addEventListener('change', renderList)
+  let searchTimer
+  $('#q').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>refresh().catch(e=>toast(e.message,true)),300)})
+  $('#fStatus').addEventListener('change',()=>refresh().catch(e=>toast(e.message,true)))
 
   // ---------- Редактор ----------
   function showEditor(on) { $('#editor').hidden = !on; $('#empty').hidden = on }
@@ -388,12 +406,14 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     if (!confirmLeave()) return
     const p = items.find((x) => x.id === id)
     if (!p) return
+    msgDirty = false
     cur = structuredClone(p)
     fill()
   }
 
   function newLead() {
     if (!confirmLeave()) return
+    msgDirty = false
     cur = { ...DEFAULTS }
     fill()
     $('#paste').focus()
@@ -454,7 +474,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
 
   function renderHistory() {
     const h = [...(cur.history || [])].reverse()
-    const rows = h.map((e) => el('li', { textContent: fmtDate(e.at) + ' — оффер: ' + (CHANNELS[e.channel] || e.channel) + (e.template ? ' (' + e.template + ')' : '') }))
+    const rows = h.map((e) => el('li', { textContent: fmtDate(e.at) + ' — '+(e.type==='sent'?'отправка подтверждена: ':'сообщение подготовлено: ') + (CHANNELS[e.channel] || e.channel) + (e.template ? ' (' + e.template + ')' : '') }))
     if (cur.createdAt) rows.push(el('li', { textContent: fmtDate(cur.createdAt) + ' — лид добавлен' }))
     $('#hist').replaceChildren(...rows)
   }
@@ -510,6 +530,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
       const i = items.findIndex((x) => x.id === cur.id)
       if (i >= 0) items.splice(i, 1)
       items.unshift(structuredClone(cur))
+      if(isNew)totalItems++
       fill()
       renderStats()
       toast(isNew ? 'Лид сохранён, сайт-пример готов' : 'Сохранено, сайт обновлён')
@@ -530,6 +551,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     try {
       await api('delete', { id: cur.id })
       items = items.filter((x) => x.id !== cur.id)
+      totalItems=Math.max(0,totalItems-1)
       cur = null; setDirty(false); showEditor(false); renderList(); renderStats()
       toast('Лид удалён')
     } catch (e) { toast(e.message, true) }
@@ -594,7 +616,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
       'компания': cur.name || '',
       'город': cur.city || '',
       'ссылка': linkOf(cur) || '[сначала сохраните лида]',
-      'источник': src ? sourceOf(src)[2] : 'в интернете',
+      'источни��': src ? sourceOf(src)[2] : 'в интернете',
       'имя': cur.contactName || '',
     }
     // {, имя} — запятая и имя, только если имя известно
@@ -602,12 +624,14 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
       .replace(/\{,\s*имя\}/g, vars['имя'] ? ', ' + vars['имя'] : '')
       .replace(/\{(компания|город|ссылка|источник|имя)\}/g, (_, k) => vars[k])
   }
+  $('#msg').addEventListener('input',()=>{msgDirty=true})
   function renderMessage() {
+    if(msgDirty)return
     renderTemplates()
     const t = templates[$('#tpl').value] || templates[0]
     $('#msg').value = compose(t.text)
   }
-  $('#tpl').addEventListener('change', renderMessage)
+  $('#tpl').addEventListener('change', () => { msgDirty=false; renderMessage() })
   $('#tplSave').addEventListener('click', () => {
     const i = Number($('#tpl').value)
     let text = $('#msg').value
@@ -627,6 +651,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
   })
   $('#tplReset').addEventListener('click', () => {
     if (!confirm('Вернуть стандартные шаблоны? Свои шаблоны будут удалены.')) return
+    msgDirty = false
     templates = structuredClone(DEFAULT_TEMPLATES)
     localStorage.removeItem('adm_templates')
     $('#tpl').value = '0'
@@ -648,20 +673,24 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     }
     if (ch === 'max') {
       const v = String(cur.max || '').trim()
-      return /^https?:\/\//i.test(v) ? v : 'https://web.max.ru/'
+      return /^https:\/\/(?:[a-z0-9-]+\.)?max\.(?:ru|im)\//i.test(v) ? v : ''
     }
     return ''
   }
 
   $$('[data-send]').forEach((b) => b.addEventListener('click', async () => {
     const ch = b.dataset.send
-    if (!cur.id || dirty) { await save(); if (!cur.id || dirty) return }
+    const draft=$('#msg').value
+    const pending=ch!=='copy'?window.open('about:blank','_blank'):null
+    if(pending) pending.opener=null
+    if (!cur.id || dirty) { await save(); if (!cur.id || dirty) {pending?.close();return} }
+    $('#msg').value=draft.replace('[сначала сохраните лида]',linkOf(cur))
     const text = $('#msg').value.trim()
-    if (!text) { toast('Сообщение пустое', true); return }
+    if (!text) { pending?.close(); toast('Сообщение пустое', true); return }
     const url = chatUrl(ch, text)
-    if (ch !== 'copy' && !url) { toast(ch === 'wa' ? 'Укажите номер WhatsApp или телефон' : 'Укажите Telegram: @username, ссылку или номер', true); return }
+    if (ch !== 'copy' && !url) { pending?.close(); toast(ch === 'max' ? 'Укажите ссылку на чат MAX: https://max.ru/… или https://max.im/…' : ch === 'wa' ? 'Укажите номер WhatsApp или телефон' : 'Укажите Telegram: @username, ссылку или номер', true); return }
     // Окно открываем сразу по клику, иначе браузер его заблокирует
-    const win = url ? window.open(url, '_blank', 'noopener') : null
+    const win=pending; if(win)win.location.href=url
     if (ch !== 'wa') {
       const ok = await copy(text)
       toast(ch === 'copy' ? (ok ? 'Текст скопирован' : 'Не удалось скопировать') : ok ? 'Текст скопирован — вставьте его в чат (Ctrl+V)' : 'Скопируйте текст вручную')
@@ -676,14 +705,22 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
     } catch (e) { toast(e.message, true) }
   }))
 
+  $('#confirmSent').addEventListener('click',async()=>{
+    if(!cur?.id || dirty){toast('Сначала сохраните карточку',true);return}
+    try{const {item}=await api('log',{id:cur.id,channel:'copy',confirmed:true,template:(templates[$('#tpl').value]||{}).name});Object.assign(cur,item);const i=items.findIndex(p=>p.id===item.id);if(i>=0)Object.assign(items[i],item);$('#status').value=item.status;renderHistory();renderList();renderStats();toast('Отправка подтверждена')}catch(e){toast(e.message,true)}
+  })
   // ---------- Экспорт ----------
-  $('#exportBtn').addEventListener('click', () => {
+  $('#exportBtn').addEventListener('click', async () => {
+    const button=$('#exportBtn');button.disabled=true
+    let exported=[]
+    try { let offset=0;do{const j=await api('list',{offset,query:$('#q').value,stage:$('#fStatus').value});exported.push(...j.items);offset=j.nextOffset}while(offset!=null) }catch(e){toast(e.message,true);return}finally{button.disabled=false}
+    exported=[...new Map(exported.map(p=>[p.id,p])).values()]
     const cols = [['name', 'Название'], ['city', 'Город'], ['status', 'Статус'], ['phone', 'Телефон'], ['email', 'Email'], ['contactName', 'Контакт'], ['tg', 'Telegram'], ['wa', 'WhatsApp'], ['max', 'MAX'], ['vk', 'ВКонтакте'], ['links', 'Ссылки'], ['link', 'Сайт-пример'], ['views', 'Просмотры'], ['notes', 'Заметки'], ['createdAt', 'Добавлен']]
-    const q = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"'
-    const rows = items.map((p) => cols.map(([k]) => q(k === 'status' ? STAGES[p.status] : k === 'link' ? linkOf(p) : k === 'createdAt' ? fmtDate(p.createdAt) : p[k])).join(';'))
+    const q = (v) => { let s=String(v??''); if(/^[=+\-@\t\r]/.test(s))s="'"+s; return '"'+s.replace(/"/g,'""')+'"' }
+    const rows = exported.map((p) => cols.map(([k]) => q(k === 'status' ? STAGES[p.status] : k === 'link' ? linkOf(p) : k === 'createdAt' ? fmtDate(p.createdAt) : p[k])).join(';'))
     const csv = '\ufeff' + [cols.map(([, t]) => q(t)).join(';'), ...rows].join('\r\n')
     const a = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })), download: 'лиды-' + new Date().toISOString().slice(0, 10) + '.csv' })
-    document.body.append(a); a.click(); a.remove()
+    document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   })
 
   // ---------- Старт ----------
@@ -691,7 +728,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
   for (const [k, v] of Object.entries(STAGES)) { stSel.append(el('option', { value: k, textContent: v })); fSel.append(el('option', { value: k, textContent: v })) }
   renderTemplates()
   // Просмотры обновляются сами раз в минуту
-  setInterval(() => { if (KEY && !document.hidden) refresh().catch(() => {}) }, 60000)
+  setInterval(() => { if (KEY && !document.hidden && !dirty && items.length<=100) refresh().catch(() => {}) }, 60000)
   if (!KEY) showLogin()
   else refresh().catch((e) => { if (e.message !== 'Нужен вход') toast(e.message, true) })
 })()
