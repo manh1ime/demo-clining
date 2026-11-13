@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Клининговый шаблон и CRM с персональными демо",
   "scripts": {
-    "test": "node --test tests/api.test.mjs",
+    "test": "node --test tests/api.test.mjs tests/bot.test.mjs",
     "dev": "node scripts/dev-server.mjs",
     "check": "node scripts/check-config.mjs"
   }

@@ -6,6 +6,13 @@ export function services() {
     if(expiry.has(key)&&expiry.get(key)<Date.now()){data.delete(key);expiry.delete(key)}
     const value=()=>data.get(key)
     switch(op.toUpperCase()){
+      case 'EVAL': {
+        const script=a[0], key1=a[2], key2=a[3];let args=a.slice(4)
+        if(script.includes('CAS_LEAD')){if(data.get(key1)!==args[0])return 0;args=args.slice(1)}
+        else if(!script.includes('SAVE_LEAD'))throw new Error('Unknown test Lua')
+        const [raw,state,id,score]=args;data.set(key1,raw)
+        if(state==='closed')redis(['ZREM',key2,id]);else redis(['ZADD',key2,score,id]);return 1
+      }
       case 'INCR': {const n=Number(value()||0)+1;data.set(key,String(n));return n}
       case 'EXPIRE': expiry.set(key,Date.now()+Number(a[1])*1000);return 1
       case 'GET': return value()??null
