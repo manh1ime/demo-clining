@@ -60,8 +60,8 @@ function normalize(b, prev) {
     links: text(b.links, 3000),
     notes: text(b.notes, 5000),
     // Сайт-пример
-    logoText: line(b.logoText, 40),
-    bottleName: line(b.bottleName, 12),
+    logoText: line(b.logoText, 80),
+    bottleName: line(b.bottleName, 80),
     bottleLine1: line(b.bottleLine1, 24),
     accent,
     regular: int(b.regular, 1, 100000, 70),

@@ -11,7 +11,7 @@ process.env.KV_REST_API_URL='https://redis.test'
 process.env.KV_REST_API_TOKEN='local-test'
 const svc=services();globalThis.fetch=svc.fetch
 const api={};for(const name of ['admin','lead','preview','telegram','setup'])api[name]=(await import('../api/'+name+'.js')).default
-const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.svg':'image/svg+xml','.xml':'application/xml','.txt':'text/plain'}
+const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.gltf':'model/gltf+json','.png':'image/png','.svg':'image/svg+xml','.xml':'application/xml','.txt':'text/plain'}
 http.createServer(async(req,res)=>{
  try{
  const url=new URL(req.url,'http://localhost:4173');req.query=Object.fromEntries(url.searchParams)
@@ -27,7 +27,7 @@ http.createServer(async(req,res)=>{
  else if(/^\/p\/[a-z0-9-]+\/privacy\/?$/.test(path))path='/privacy.html'
  else if(path==='/'||/^\/p\/[a-z0-9-]+\/?$/.test(path))path='/index.html'
  // Deliberately serve only public assets, never APIs, tests, docs or .env files.
- if(!['/index.html','/admin.html','/privacy.html','/404.html','/config.js','/site.js','/favicon.svg','/robots.txt','/sitemap.xml'].includes(path)){res.writeHead(404,{'Content-Type':'text/html; charset=utf-8'});res.end(await readFile(root+'/404.html'));return}
+ if(!['/index.html','/admin.html','/privacy.html','/404.html','/config.js','/site.js','/brand-fit.js','/caddy-scene.js','/brand-responsive.css','/assets/cleaning-caddy.gltf','/assets/cleaning-caddy-poster.svg','/favicon.svg','/robots.txt','/sitemap.xml'].includes(path)){res.writeHead(404,{'Content-Type':'text/html; charset=utf-8'});res.end(await readFile(root+'/404.html'));return}
  res.setHeader('Content-Type',mime[extname(path)]||'application/octet-stream');res.end(await readFile(root+path))
  }catch(e){console.error(e);if(!res.headersSent)res.writeHead(500);res.end('Local test error')}
 }).listen(4173,'127.0.0.1',()=>console.log('Local demo http://localhost:4173 | admin password: local-demo-password | mock services, no persistent data'))
