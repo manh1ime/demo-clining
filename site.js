@@ -8,7 +8,7 @@
   if (previewMode() || liveTest) {
     const note=document.createElement('div'); note.className='demo-banner'; note.setAttribute('role','note'); note.textContent=liveTest?'ЖИВОЙ ТЕСТ: заявка будет сохранена и отправлена в настоящий Telegram. Только тестовые данные. Требуются вход в /admin и включённый режим проверки.':'Концепт сайта • не официальный сайт компании. Тестовая форма: контакты не сохраняются и не отправляются.'; note.style.cssText='position:relative;z-index:20;padding:12px 24px;background:#112632;color:white;font:14px/1.5 system-ui;text-align:center'; document.body.prepend(note);
     const nav=document.querySelector('.navwrap'); if(nav) nav.style.top=note.offsetHeight+'px';
-    const btn=document.querySelector('.form-btn'); if(btn) btn.firstChild.textContent=liveTest?'Отправить тест в Telegram ':'Протестировать заявку ';
+    const btn=document.querySelector('.form-btn'); if(btn) btn.firstChild.textContent=liveTest?'Отправить тес�� в Telegram ':'Протестировать заявку ';
   }
   function previewMode(){return S.preview || S.site?.demo !== false}
   const preview = S.preview || ''
@@ -22,6 +22,27 @@
     if (v != null && v !== '') el.textContent = v
     else if ((preview || S.site?.demo !== false) && !key.startsWith('legal.')) el.hidden = true
   })
+
+  // Названия не обрезаются: шапка растёт по высоте, текст переносится.
+  const nav = document.querySelector('.nav')
+  const logo = nav?.querySelector('[data-cfg="brand.logoText"]')
+  if (logo) nav.classList.toggle('brand-long', Array.from(logo.textContent).length > 28 || /\S{19}/u.test(logo.textContent))
+  function syncHeader() {
+    if (!nav) return
+    document.documentElement.style.setProperty('--nav-height', Math.ceil(nav.getBoundingClientRect().height) + 'px')
+    const banner = document.querySelector('.demo-banner')
+    const header = document.querySelector('.navwrap')
+    if (header) header.style.top = (banner?.offsetHeight || 0) + 'px'
+  }
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(syncHeader)
+    if (nav) ro.observe(nav)
+    const banner = document.querySelector('.demo-banner')
+    if (banner) ro.observe(banner)
+  }
+  addEventListener('resize', syncHeader, { passive: true })
+  document.fonts?.ready.then(syncHeader)
+  syncHeader()
 
   // Ссылки: data-cfg-href="tel:contacts.phoneHref" | "mailto:contacts.email" | "contacts.telegram"
   document.querySelectorAll('[data-cfg-href]').forEach((el) => {

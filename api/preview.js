@@ -20,7 +20,7 @@ function siteData(p) {
   const name = p.name
   const phone = ru(digits(p.phone))
   const wa = ru(digits(p.wa || p.phone))
-  const bottle = (p.bottleName || name.replace(/[«»"'`]/g, '').split(/\s+/)[0] || 'БРЕНД').toUpperCase().slice(0, 12)
+  const bottle = String(p.bottleName || name || 'БРЕНД').trim()
   const brand = { name, logoText: p.logoText || name, bottleName: bottle, accent: p.accent || '#2054ec' }
   if (p.bottleLine1) brand.bottleLine1 = p.bottleLine1
   return {

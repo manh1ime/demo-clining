@@ -101,7 +101,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   <h1>🧽 Лиды</h1>
   <div class="stats" id="stats"></div>
   <div class="sp"></div>
-  <button class="btn sm" id="exportBtn" title="Экспорт всех компаний с учётом поиска и статуса">Экспорт</button>
+  <button class="btn sm" id="exportBtn" title="��кспорт всех компаний с учётом поиска и статуса">Экспорт</button>
   <button class="btn sm" id="logoutBtn">Выйти</button>
   <button class="btn pri" id="newBtn">+ Новый лид</button>
 </header>
@@ -178,8 +178,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
           <section class="card">
             <h3>Сайт-пример <span class="badge" id="views"></span></h3>
             <div class="row">
-              <label class="f"><span>Текст логотипа</span><input class="in" data-k="logoText" maxlength="40" placeholder="= название"></label>
-              <label class="f"><span>Надпись на флаконе</span><input class="in" data-k="bottleName" maxlength="12" placeholder="= первое слово"></label>
+              <label class="f"><span>Текст логотипа</span><input class="in" data-k="logoText" maxlength="80" placeholder="= название"></label>
+              <label class="f"><span>Надпись на флаконе</span><input class="in" data-k="bottleName" maxlength="80" placeholder="= полное название"></label>
             </div>
             <label class="f"><span>Фирменный цвет</span>
               <div class="swatches" id="swatches"><input type="color" data-k="accent" value="#2054ec" title="Свой цвет"></div>
@@ -533,7 +533,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       if(isNew)totalItems++
       fill()
       renderStats()
-      toast(isNew ? 'Лид сохранён, сайт-пример готов' : 'Сохранено, сайт обновлён')
+      toast(isNew ? 'Лид сохранён, сайт-пример готов' : 'Сохранено, сайт о��новлён')
     } catch (e) {
       toast(e.message, true)
     } finally {
