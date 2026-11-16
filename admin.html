@@ -152,6 +152,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
             <label class="f"><span>Часы работы</span><input class="in" data-k="hours" maxlength="80" placeholder="Ежедневно, 9:00–21:00"></label>
             <label class="f"><span>Где нашли — ссылки на 2ГИС, Яндекс Карты, соцсети, сайт (по одной на строку)</span><textarea data-k="links" rows="3" placeholder="https://2gis.ru/...&#10;https://yandex.ru/maps/org/..."></textarea></label>
             <div class="chips" id="chips"></div>
+            <a class="btn" id="open2gis" target="_blank" rel="noopener noreferrer" hidden>Открыть карточку в 2ГИС ↗</a>
           </section>
 
           <section class="card">
@@ -467,6 +468,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   }
 
   function renderChips() {
+    // Canonical link, never an arbitrary external URL from pasted text.
+    const firm = String(cur.links || '').match(/(?:https?:\/\/)?2gis\.ru\/[^\s]*?firm\/(\d{15,17})(?=[/?#\s]|$)/)?.[1]
+    const sourceButton = $('#open2gis')
+    sourceButton.hidden = !firm
+    if (firm) sourceButton.href = 'https://2gis.ru/spb/firm/' + firm
+    else sourceButton.removeAttribute('href')
     $('#chips').replaceChildren(...linesOf(cur.links).filter((u) => /^https?:\/\//i.test(u)).map((u) =>
       el('a', { className: 'chip', href: u, target: '_blank', rel: 'noopener', textContent: sourceOf(u)[1] + ' ↗' })
     ))
