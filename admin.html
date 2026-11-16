@@ -84,6 +84,7 @@ input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-rad
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #2054ec;outline-offset:3px}
 .btn{min-height:44px}.hint,.badge,.item .meta,label.f>span{font-size:14px}.item{width:100%;display:block;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;font:inherit;color:inherit}.item.on{background:#e8eefc}
 @media(max-width:600px){.savebar{position:static}.main{padding:16px 16px 0}.grid{display:block}.col{margin-bottom:16px}.row,.row4{grid-template-columns:1fr 1fr;min-width:0}.card{padding:12px;min-width:0}.in{min-width:0}.top{height:auto;min-height:64px;flex-wrap:wrap;padding:8px}.layout{height:auto}.savebar{margin:16px -16px 0;padding:12px 16px}.linkbox{flex-wrap:wrap}.linkbox .in{flex-basis:100%}.side{max-height:45vh}.stats{display:none}}
+@media(max-width:380px){.row,.row4{grid-template-columns:1fr}.head h2{min-width:0}.btn{white-space:normal}.top{gap:6px}.card{overflow-wrap:anywhere}}
 </style>
 </head>
 <body>
@@ -101,6 +102,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   <h1>🧽 Лиды</h1>
   <div class="stats" id="stats"></div>
   <div class="sp"></div>
+  <button class="btn sm" id="importBtn" type="button">Импорт базы</button><input id="importFile" type="file" accept="application/json,.json" hidden>
   <button class="btn sm" id="exportBtn" title="��кспорт всех компаний с учётом поиска и статуса">Экспорт</button>
   <button class="btn sm" id="logoutBtn">Выйти</button>
   <button class="btn pri" id="newBtn">+ Новый лид</button>
@@ -110,6 +112,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   <aside class="side">
     <div class="filters">
       <input class="in" id="q" type="search" placeholder="Поиск: название, город, телефон">
+      <select id="fGroup" aria-label="Группа предложения"><option value="">Все группы</option></select>
       <select id="fStatus"><option value="">Все статусы</option></select>
     </div>
     <div class="list" id="list"></div><div style="padding:12px"><div class="hint" id="loaded" aria-live="polite"></div><button class="btn" id="loadMore" hidden>Загрузить ещё 100</button></div>
@@ -132,7 +135,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
         <div class="col">
           <section class="card">
             <h3>Быстрое заполнение</h3>
-            <textarea id="paste" placeholder="Скопируйте сюда текст карточки из 2ГИС, Яндекс Карт, ВКонтакте или сайта — название, телефон, адрес, часы работы и ссылки распознаются автоматически"></textarea>
+            <textarea id="paste" placeholder="Скопируйте сюда текст карточки из 2ГИС, Яндекс Карт, ВКонтакте или сайта — название, телефон, адрес, час�� работы и ссылки распознаются автоматически"></textarea>
             <div class="actions"><button class="btn sm" type="button" id="parseBtn">Распознать и заполнить</button></div>
             <div class="hint">Заполняются только пустые поля, уже введённое не перезаписывается.</div>
           </section>
@@ -165,10 +168,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
               <label class="f"><span>MAX (полная ссылка на чат)</span><input class="in" data-k="max" maxlength="160"></label>
               <label class="f"><span>ВКонтакте (ссылка)</span><input class="in" data-k="vk" maxlength="160" placeholder="https://vk.com/..."></label>
             </div>
-            <div class="hint">Telegram, WhatsApp и ВКонтакте также покажутся в подвале их сайта-примера.</div>
+            <div class="hint">Используйте ссылки из источника. Переход по основному номеру без отдельной ссылки — только попытка: наличие аккаунта не подтверждено. Telegram-канал не равен личному чату.</div>
           </section>
 
           <section class="card">
+            <h3>План работы</h3>
+            <label class="f"><span>Группа предложения</span><select data-k="group" id="group"></select></label>
+            <label class="f"><span>Порядок в первой очереди (0 — не первая очередь)</span><input class="in" type="number" min="0" max="1000" data-k="priority"></label>
+            <label class="f"><span>Следующий шаг</span><textarea data-k="nextAction"></textarea></label>
+            <label class="f"><span>Что предлагаем при интересе</span><textarea data-k="offer"></textarea></label>
+            <label class="f"><span>Черновик первого обращения</span><textarea data-k="firstMessage"></textarea></label>
+            <button class="btn sm" id="useFirstMessage" type="button">Подставить черновик в сообщение</button>
+            <p class="hint">Группа — не статус сделки. Сначала подтвердите профиль и потребность. Сообщения сами не отправляются.</p>
             <h3>Заметки и история</h3>
             <textarea data-k="notes" rows="4" placeholder="Договорённости, возражения, когда напомнить…"></textarea>
             <ul class="hist" id="hist"></ul>
@@ -208,6 +219,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
               <button class="btn send-wa" type="button" data-send="wa">WhatsApp</button>
               <button class="btn send-tg" type="button" data-send="tg">Telegram</button>
               <button class="btn send-max" type="button" data-send="max">MAX</button>
+              <button class="btn" type="button" data-send="vk">ВКонтакте</button>
               <button class="btn" type="button" data-send="copy">Копировать</button>
             </div>
             <div class="actions"><button class="btn sm" type="button" id="confirmSent">✓ Подтвердить, что отправлено</button></div><div class="hint">Открытие чата не означает отправку. После отправки подтвердите её кнопкой выше. WhatsApp откроется с готовым текстом. Для Telegram и MAX текст копируется и открывается чат — остаётся вставить и отправить.</div>
@@ -231,6 +243,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
 <div class="toast" id="toast"></div>
 
+<script src="/crm-tools.js"></script>
 <script>
 (() => {
   'use strict'
@@ -238,13 +251,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   const $$ = (s) => [...document.querySelectorAll(s)]
 
   const STAGES = { new: 'Новый', sent: 'Оффер отправлен', replied: 'Ответил', interested: 'Есть интерес', client: 'Клиент', rejected: 'Отказ' }
-  const CHANNELS = { wa: 'WhatsApp', tg: 'Telegram', max: 'MAX', copy: 'текст скопирован' }
+  const CHANNELS = { wa: 'WhatsApp', tg: 'Telegram', max: 'MAX', vk: 'ВКонтакте', copy: 'текст скопирован' }
   const COLORS = ['#2054ec', '#0f9d74', '#16a34a', '#e2552d', '#d4237a', '#7c3aed', '#0e7490', '#111827']
-  const DEFAULTS = { status: 'new', accent: '#2054ec', regular: 70, deep: 130, renovation: 170, minOrder: 2500 }
+  const GROUPS = window.CRMTools.GROUPS
+  const DEFAULTS = { group: 'qualify', priority: 0, status: 'new', accent: '#2054ec', regular: 70, deep: 130, renovation: 170, minOrder: 2500 }
   const DEFAULT_TEMPLATES = [
-    { name: 'Первое касание', text: 'Здравствуйте{, имя}! Увидели «{компания}» {источник} и сделали для вас пример сайта — с вашим названием, контактами и калькулятором стоимости уборки:\n{ссылка}\n\nКлиент сам считает цену и оставляет заявку, а заявка сразу приходит вам в Telegram. Если понравится — запустим его на вашем домене за пару дней. Посмотрите?' },
-    { name: 'Напоминание', text: 'Здравствуйте{, имя}! Напомню про пример сайта для «{компания}»: {ссылка}\nУспели посмотреть? Цвета, цены и тексты подстроим под вас бесплатно.' },
-    { name: 'После просмотра', text: 'Здравствуйте{, имя}! Хотели уточнить, подходит ли «{компания}» такой вариант сайта: {ссылка}\nМожем обсудить оформление, цены и запуск на вашем домене. Если предложение неактуально — больше писать не будем.' },
+    {name:'Новый сайт — выяснить потребность',text:'Здравствуйте! Подскажите, кто у «{компания}» отвечает за сайт и онлайн-заявки? Делаем для клининговых компаний сайт с предварительным расчётом и передачей обращения менеджеру в Telegram. Актуально обсудить такой формат?'},
+    {name:'Сайт есть — выяснить задачу',text:'Здравствуйте! Подскажите, кто у «{компания}» отвечает за обработку заявок с сайта? Помогаем передавать обращения менеджеру в Telegram и отмечать их статус. Есть ли задача улучшить этот процесс?'},
+    {name:'После интереса — общее демо',text:'Могу показать демонстрацию: клиент выбирает уборку, оставляет заявку, а менеджер получает её в Telegram. Это общий демонстрационный пример, не официальный сайт вашей компании. Удобно показать?'}
   ]
   const SOURCES = [
     [/2gis\./i, '2ГИС', 'в 2ГИС'],
@@ -339,12 +353,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 
   $('#loadMore').addEventListener('click', async () => {
     const btn=$('#loadMore'); btn.disabled=true
-    try { const j=await api('list',{offset:nextOffset,query:$('#q').value,stage:$('#fStatus').value}); items.push(...j.items.filter(p=>!items.some(x=>x.id===p.id))); nextOffset=j.nextOffset; totalItems=j.total; btn.hidden=nextOffset==null; $('#loaded').textContent='Загружено '+items.length+' из '+totalItems+'; поиск и экспорт — по загруженным'; renderList(); renderStats() } catch(e){toast(e.message,true)} finally{btn.disabled=false}
+    try { const j=await api('list',{offset:nextOffset,query:$('#q').value,stage:$('#fStatus').value,group:$('#fGroup').value}); items.push(...j.items.filter(p=>!items.some(x=>x.id===p.id))); nextOffset=j.nextOffset; totalItems=j.total; btn.hidden=nextOffset==null; $('#loaded').textContent='Загружено '+items.length+' из '+totalItems+'; поиск и экспорт — по загруженным'; renderList(); renderStats() } catch(e){toast(e.message,true)} finally{btn.disabled=false}
   })
   // ---------- Список ----------
   async function refresh() {
     const sequence=++refreshSequence
-    const j = await api('list',{query:$('#q').value,stage:$('#fStatus').value})
+    const j = await api('list',{query:$('#q').value,stage:$('#fStatus').value,group:$('#fGroup').value})
     if(sequence!==refreshSequence)return
     totalItems = j.total || 0; nextOffset = j.nextOffset
     items = j.items || []
@@ -371,9 +385,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     $('#loadMore').hidden=nextOffset==null
     const q = $('#q').value.trim().toLowerCase()
     const st = $('#fStatus').value
+    const group = $('#fGroup').value
     const qd = digits(q)
     const list = items.filter((p) => {
       if (st && p.status !== st) return false
+      if (group && (p.group || 'qualify') !== group) return false
       if (!q) return true
       const hay = [p.name, p.city, p.contactName, p.address, p.notes].join(' ').toLowerCase()
       return hay.includes(q) || (qd.length >= 3 && (digits(p.phone).includes(qd) || digits(p.wa).includes(qd)))
@@ -383,8 +399,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       box.replaceChildren(el('div', { className: 'empty', style: 'margin-top:40px', textContent: items.length ? 'Ничего не найдено' : 'Лидов пока нет' }))
       return
     }
+    list.sort((a,b)=>(Number(a.priority)||9999)-(Number(b.priority)||9999))
     box.replaceChildren(...list.map((p) => {
       const meta = el('div', { className: 'meta' }, el('span', { className: 'badge st-' + p.status, textContent: STAGES[p.status] || p.status }))
+      meta.append(el('span', {className:'badge',textContent:GROUPS[p.group || 'qualify'] || 'Уточнить'}))
+      if (p.priority) meta.append(el('span',{textContent:'Очередь №'+p.priority}))
       if (p.city) meta.append(el('span', { textContent: p.city }))
       if (p.views) meta.append(el('span', { className: Date.now() - Date.parse(p.lastView) < 864e5 ? 'hot' : '', textContent: '👁 ' + p.views + ' · ' + ago(p.lastView) }))
       if (p.formLeads) meta.append(el('span', { className: 'hot', textContent: '📝 заявка с сайта' }))
@@ -396,6 +415,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   let searchTimer
   $('#q').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>refresh().catch(e=>toast(e.message,true)),300)})
   $('#fStatus').addEventListener('change',()=>refresh().catch(e=>toast(e.message,true)))
+  $('#fGroup').addEventListener('change',()=>refresh().catch(e=>toast(e.message,true)))
 
   // ---------- Редактор ----------
   function showEditor(on) { $('#editor').hidden = !on; $('#empty').hidden = on }
@@ -433,7 +453,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     renderHistory()
     renderLink()
     renderViews()
-    renderMessage()
+    if(cur.firstMessage){$('#msg').value=cur.firstMessage;msgDirty=true}else renderMessage()
     renderList()
     $('#main').scrollTop = 0
   }
@@ -468,12 +488,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   }
 
   function renderChips() {
-    // Canonical link, never an arbitrary external URL from pasted text.
-    const firm = String(cur.links || '').match(/(?:https?:\/\/)?2gis\.ru\/[^\s]*?firm\/(\d{15,17})(?=[/?#\s]|$)/)?.[1]
-    const sourceButton = $('#open2gis')
-    sourceButton.hidden = !firm
-    if (firm) sourceButton.href = 'https://2gis.ru/spb/firm/' + firm
-    else sourceButton.removeAttribute('href')
+    const source=window.CRMTools.sourceUrl(cur);const button=$('#open2gis');button.hidden=!source;if(source)button.href=source;else button.removeAttribute('href')
     $('#chips').replaceChildren(...linesOf(cur.links).filter((u) => /^https?:\/\//i.test(u)).map((u) =>
       el('a', { className: 'chip', href: u, target: '_blank', rel: 'noopener', textContent: sourceOf(u)[1] + ' ↗' })
     ))
@@ -623,7 +638,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
       'компания': cur.name || '',
       'город': cur.city || '',
       'ссылка': linkOf(cur) || '[сначала сохраните лида]',
-      'источни��': src ? sourceOf(src)[2] : 'в интернете',
+      'источник': src ? sourceOf(src)[2] : 'в интернете',
       'имя': cur.contactName || '',
     }
     // {, имя} — запятая и имя, только если имя известно
@@ -672,12 +687,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     }
     if (ch === 'tg') {
       const v = String(cur.tg || '').trim()
-      if (/^https?:\/\//i.test(v)) return v
+      if (/^https:\/\/t\.me\//i.test(v)) return v
+      if (/^https?:\/\//i.test(v)) return ''
       const u = v.replace(/^@/, '')
       if (/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(u)) return 'https://t.me/' + u
       const d = ruPhone(v || cur.phone)
       return d ? 'https://t.me/+' + d : ''
     }
+    if (ch === 'vk') return window.CRMTools.vkChat(cur.vk)
     if (ch === 'max') {
       const v = String(cur.max || '').trim()
       return /^https:\/\/(?:[a-z0-9-]+\.)?max\.(?:ru|im)\//i.test(v) ? v : ''
@@ -695,7 +712,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     const text = $('#msg').value.trim()
     if (!text) { pending?.close(); toast('Сообщение пустое', true); return }
     const url = chatUrl(ch, text)
-    if (ch !== 'copy' && !url) { pending?.close(); toast(ch === 'max' ? 'Укажите ссылку на чат MAX: https://max.ru/… или https://max.im/…' : ch === 'wa' ? 'Укажите номер WhatsApp или телефон' : 'Укажите Telegram: @username, ссылку или номер', true); return }
+    if (ch !== 'copy' && !url) { pending?.close(); toast(ch === 'max' ? 'Укажите ссылку на чат MAX: https://max.ru/… или https://max.im/…' : ch === 'wa' ? 'Укажите номер WhatsApp или телефон' : ch === 'vk' ? 'Укажите ссылку ВКонтакте' : 'Укажите Telegram: @username, ссылку или номер', true); return }
     // Окно открываем сразу по клику, иначе браузер его заблокирует
     const win=pending; if(win)win.location.href=url
     if (ch !== 'wa') {
@@ -720,9 +737,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   $('#exportBtn').addEventListener('click', async () => {
     const button=$('#exportBtn');button.disabled=true
     let exported=[]
-    try { let offset=0;do{const j=await api('list',{offset,query:$('#q').value,stage:$('#fStatus').value});exported.push(...j.items);offset=j.nextOffset}while(offset!=null) }catch(e){toast(e.message,true);return}finally{button.disabled=false}
+    try { let offset=0;do{const j=await api('list',{offset,query:$('#q').value,stage:$('#fStatus').value,group:$('#fGroup').value});exported.push(...j.items);offset=j.nextOffset}while(offset!=null) }catch(e){toast(e.message,true);return}finally{button.disabled=false}
     exported=[...new Map(exported.map(p=>[p.id,p])).values()]
-    const cols = [['name', 'Название'], ['city', 'Город'], ['status', 'Статус'], ['phone', 'Телефон'], ['email', 'Email'], ['contactName', 'Контакт'], ['tg', 'Telegram'], ['wa', 'WhatsApp'], ['max', 'MAX'], ['vk', 'ВКонтакте'], ['links', 'Ссылки'], ['link', 'Сайт-пример'], ['views', 'Просмотры'], ['notes', 'Заметки'], ['createdAt', 'Добавлен']]
+    const cols = [['group','Группа'],['nextAction','Следующий шаг'],['offer','Предложение'],['firstMessage','Черновик'],['sourceFirmId','ID 2ГИС'],['name', 'Название'], ['city', 'Город'], ['status', 'Статус'], ['phone', 'Телефон'], ['email', 'Email'], ['contactName', 'Контакт'], ['tg', 'Telegram'], ['wa', 'WhatsApp'], ['max', 'MAX'], ['vk', 'ВКонтакте'], ['links', 'Ссылки'], ['link', 'Сайт-пример'], ['views', 'Просмотры'], ['notes', 'Заметки'], ['createdAt', 'Добавлен']]
     const q = (v) => { let s=String(v??''); if(/^[=+\-@\t\r]/.test(s))s="'"+s; return '"'+s.replace(/"/g,'""')+'"' }
     const rows = exported.map((p) => cols.map(([k]) => q(k === 'status' ? STAGES[p.status] : k === 'link' ? linkOf(p) : k === 'createdAt' ? fmtDate(p.createdAt) : p[k])).join(';'))
     const csv = '\ufeff' + [cols.map(([, t]) => q(t)).join(';'), ...rows].join('\r\n')
@@ -730,12 +747,44 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   })
 
+  // ---------- Импорт через авторизованную сессию ----------
+  let importing=false
+  const downloadJson=(name,data)=>{const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=el('a',{href:url,download:name});a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+  $('#useFirstMessage').addEventListener('click',()=>{read();if(!cur.firstMessage){toast('В карточке нет черновика',true);return}$('#msg').value=cur.firstMessage;msgDirty=true;toast('Черновик подставлен. Ничего не отправлено.')})
+  $('#importBtn').addEventListener('click',()=>{if(importing || !confirmLeave())return;$('#importFile').click()})
+  $('#importFile').addEventListener('change',async(e)=>{
+    const file=e.target.files[0];e.target.value='';if(!file || importing)return
+    importing=true;$('#importBtn').disabled=true
+    const report={created:0,existing:0,conflicts:[],errors:[]}
+    try{
+      if(file.size>2000000)throw new Error('Файл больше 2 МБ')
+      const incoming=window.CRMTools.validateImport(JSON.parse(await file.text()))
+      let existing=[],offset=0
+      do{const j=await api('list',{offset});existing.push(...j.items);offset=j.nextOffset}while(offset!=null)
+      if(!confirm('В файле '+incoming.length+' компаний. Существующие статусы, заметки и заполненные контакты сохранятся. Перед импортом скачается резервная копия. Продолжить?'))return
+      downloadJson('crm-backup-'+new Date().toISOString().slice(0,10)+'.json',{exportedAt:new Date().toISOString(),items:existing})
+      for(let i=0;i<incoming.length;i++){
+        const p=incoming[i];$('#importBtn').textContent='Импорт '+(i+1)+' / '+incoming.length
+        const match=window.CRMTools.matchImport(p,existing)
+        if(match.conflict){report.conflicts.push({name:p.name,reason:match.conflict});continue}
+        try{
+          const j=await api('importOne',{prospect:p,existingId:match.item?.id})
+          report[j.result]++;const at=existing.findIndex(x=>x.id===j.item.id);if(at>=0)existing[at]=j.item;else existing.push(j.item)
+        }catch(err){report.errors.push({name:p.name,error:err.message});if(err.message==='Нужен вход')break}
+      }
+      downloadJson('crm-import-report.json',report)
+      $('#q').value='';$('#fStatus').value='';$('#fGroup').value='';await refresh()
+      alert('Импорт завершён. Добавлено: '+report.created+'; существующих: '+report.existing+'; конфликтов: '+report.conflicts.length+'; ошибок: '+report.errors.length+'. При ошибках можно повторить тот же файл. Отчёт скачан.')
+    }catch(err){toast(err.message,true)}finally{importing=false;$('#importBtn').disabled=false;$('#importBtn').textContent='Импорт базы'}
+  })
   // ---------- Старт ----------
+  for(const [value,label] of Object.entries(GROUPS)){ $('#group').append(el('option',{value,textContent:label}));$('#fGroup').append(el('option',{value,textContent:label})) }
+
   const stSel = $('#status'), fSel = $('#fStatus')
   for (const [k, v] of Object.entries(STAGES)) { stSel.append(el('option', { value: k, textContent: v })); fSel.append(el('option', { value: k, textContent: v })) }
   renderTemplates()
   // Просмотры обновляются сами раз в минуту
-  setInterval(() => { if (KEY && !document.hidden && !dirty && items.length<=100) refresh().catch(() => {}) }, 60000)
+  setInterval(() => { if (KEY && !document.hidden && !dirty && !importing && items.length<=100) refresh().catch(() => {}) }, 60000)
   if (!KEY) showLogin()
   else refresh().catch((e) => { if (e.message !== 'Нужен вход') toast(e.message, true) })
 })()

@@ -5,7 +5,9 @@ import { hasRedis, redis } from './_lib.js'
 import { authenticated, checkPassword, sameOrigin, session, limit, ipKey } from './_auth.js'
 
 const STAGES = ['new', 'sent', 'replied', 'interested', 'client', 'rejected']
-const CHANNELS = ['wa', 'tg', 'max', 'copy']
+const CHANNELS = ['wa', 'tg', 'max', 'vk', 'copy']
+const GROUPS = ['new_site','existing_site','qualify','fix','reserve']
+const firmId = p => String(p.sourceFirmId || '').match(/^\d{15,17}$/)?.[0] || String(p.links || '').match(/2gis\.ru\/[^\s]*?firm\/(\d{15,17})/)?.[1] || ''
 
 class UserError extends Error {}
 
@@ -43,6 +45,12 @@ function normalize(b, prev) {
     updatedAt: now,
     status: STAGES.includes(b.status) ? b.status : prev?.status || 'new',
     history: Array.isArray(prev?.history) ? prev.history : [],
+    group: GROUPS.includes(b.group) ? b.group : prev?.group || 'qualify',
+    sourceFirmId: firmId(b) || prev?.sourceFirmId || '',
+    nextAction: text(b.nextAction, 1500),
+    offer: text(b.offer, 1500),
+    firstMessage: text(b.firstMessage, 2500),
+    priority: int(b.priority, 0, 1000, 0),
     // Компания
     name,
     city: line(b.city, 60),
@@ -119,7 +127,7 @@ export default async function handler(req, res) {
       case 'list': {
         let offset = Math.max(0, Number.parseInt(b.offset,10) || 0)
         const total = Number(await redis('ZCARD', 'prospects'))
-        const query = line(b.query,100).toLowerCase(), stage = STAGES.includes(b.stage) ? b.stage : ''
+        const query = line(b.query,100).toLowerCase(), stage = STAGES.includes(b.stage) ? b.stage : '', group = GROUPS.includes(b.group) ? b.group : ''
         const digits = query.replace(/\D/g,'')
         const found=[]
         // Read in bounded batches, including companies beyond the first page.
@@ -133,7 +141,7 @@ export default async function handler(req, res) {
             const p=JSON.parse(raws[i])
             const hay=[p.name,p.city,p.phone,p.wa,p.contactName,p.address,p.notes].join(' ').toLowerCase()
             const matches=!query || hay.includes(query) || (digits.length>=3 && [p.phone,p.wa].some(v=>String(v||'').replace(/\D/g,'').includes(digits)))
-            if((!stage || p.status===stage)&&matches)found.push(p)
+            if((!stage || p.status===stage)&&(!group || (p.group || 'qualify')===group)&&matches)found.push(p)
             if(found.length>=100)break
           }
         }
@@ -144,6 +152,39 @@ export default async function handler(req, res) {
         ]).then((r) => r.map(hashToObj))
         const items = found.map(p => ({...p,views:Number(views[p.id]||0),lastView:last[p.id]||null,formLeads:Number(leads[p.id]||0)}))
         return res.status(200).json({ ok: true, items, total, nextOffset: offset < total ? offset : null })
+      }
+
+      case 'importOne': {
+        // Import is authenticated, one record per request, resumable by stable source ID.
+        const src=b.prospect || {}, fid=firmId(src)
+        if(!fid || !String(src.name || '').trim())throw new UserError('Нужны название и источник 2ГИС')
+        const stableId='imp-'+crypto.createHmac('sha256',pass).update('crm-import-v1:'+fid).digest('hex').slice(0,40)
+        let prev=validId(b.existingId) ? await getProspect(b.existingId) : await getProspect(stableId)
+        if(prev && firmId(prev)!==fid)throw new UserError('Конфликт источника: проверьте карточку вручную')
+        if(prev) {
+          // Never replace history, deal state, notes, tariffs or nonempty contacts.
+          const merged={...prev}
+          for(const key of ['city','phone','email','address','hours','contactName','tg','wa','max','vk','group','sourceFirmId','nextAction','offer','firstMessage','priority']) {
+            if(!merged[key] && src[key]) merged[key]=src[key]
+          }
+          const links=new Set(String(prev.links || '').split(/\n+/).filter(Boolean))
+          for(const link of String(src.links || '').split(/\n+/).filter(Boolean))links.add(link)
+          merged.links=[...links].join('\n').slice(0,3000)
+          const next=normalize(merged,prev)
+          // Compare-and-set refuses a simultaneous manual edit rather than overwriting it.
+          const before=JSON.stringify(prev), after=JSON.stringify(next)
+          const saved=await redis('EVAL',"-- IMPORT_CAS\nif redis.call('GET',KEYS[1]) ~= ARGV[1] then return 0 end redis.call('SET',KEYS[1],ARGV[2]);redis.call('ZADD',KEYS[2],ARGV[3],ARGV[4]);return 1",2,'prospect:'+prev.id,'prospects',before,after,Date.parse(next.updatedAt),next.id)
+          if(Number(saved)!==1)return res.status(409).json({error:'Карточка изменена параллельно. Повторите импорт: данные не перезаписаны.'})
+          return res.status(200).json({ok:true,result:'existing',item:next})
+        }
+        const next=normalize({...src,status:'new'},null);next.id=stableId
+        // Imported notes must explicitly describe unknown outreach history.
+        next.notes=text(src.notes,5000)
+        const created=await redis('SET','prospect:'+stableId,JSON.stringify(next),'NX')
+        const item=created ? next : await getProspect(stableId)
+        if(!item)throw new Error('Import record unavailable')
+        await redis('ZADD','prospects',Date.parse(item.updatedAt),item.id)
+        return res.status(200).json({ok:true,result:created?'created':'existing',item})
       }
 
       case 'save': {
