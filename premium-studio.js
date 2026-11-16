@@ -20,7 +20,7 @@
   const key=new T.DirectionalLight(0xfff9ee,3.2);key.position.set(-.65,1.1,1.3);key.castShadow=shadows
   key.shadow.mapSize.set(1024,1024);Object.assign(key.shadow.camera,{left:-.65,right:.65,top:.65,bottom:-.65,near:.1,far:4});key.shadow.bias=-.00015;key.shadow.normalBias=.0004;key.shadow.radius=4;scene.add(key)
   const fill=new T.DirectionalLight(0xe5efff,1.1);fill.position.set(.9,.45,-.2);scene.add(fill)
-  const floor=new T.Mesh(new T.PlaneGeometry(6,6),new T.ShadowMaterial({color:0x3e493d,opacity:.15}));floor.rotation.x=-Math.PI/2;floor.position.y=-.001;floor.receiveShadow=true;scene.add(floor)
+  const floor=new T.Mesh(new T.PlaneGeometry(6,6),new T.ShadowMaterial({color:0x000000,opacity:.4}));floor.rotation.x=-Math.PI/2;floor.position.y=-.001;floor.receiveShadow=true;scene.add(floor)
   const world=new T.Group();scene.add(world)
   let gltf
   try {
