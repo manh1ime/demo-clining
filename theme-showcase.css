@@ -14,3 +14,4 @@
 @media(prefers-reduced-motion:reduce){.tool-choice{transition:none}}
 /* Keep company names readable beside the extra header control. */
 @media(max-width:760px){.nav,.nav.brand-long{grid-template-columns:minmax(0,1fr);gap:14px;padding:16px 0}.nav .logo{max-width:100%;font-size:24px}.nav .navright{justify-self:stretch;justify-content:flex-end}.nav .navphone{margin-right:auto}.nav .logo [data-cfg]{overflow-wrap:anywhere}}
+[data-theme=dark] .field input::placeholder,[data-theme=dark] .field textarea::placeholder{color:#a5b5aa;opacity:1}[data-theme=dark] .field span,[data-theme=dark] .field small{color:var(--muted)!important}
