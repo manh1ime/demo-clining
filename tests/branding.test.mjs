@@ -17,13 +17,13 @@ for(const text of ['ЧИСТО','Архитектура безупречной �
  })
 }
 test('embedded model has valid accessor ranges, all meshes and textures',()=>{
- const g=JSON.parse(readFileSync(new URL('assets/cleaning-caddy.gltf',root),'utf8'))
+ const g=JSON.parse(JSON.parse(readFileSync(new URL('assets/kit-model/manifest.json',root),'utf8')).parts.map(p=>readFileSync(new URL(p.slice(1),root),'utf8')).join(''))
  const buffer=Buffer.from(g.buffers[0].uri.split(',')[1],'base64')
- assert.equal(buffer.length,g.buffers[0].byteLength);assert.equal(g.meshes.length,11)
+ assert.equal(buffer.length,g.buffers[0].byteLength);assert.equal(g.meshes.length,26)
  const bytes={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4},size={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}
  for(const a of g.accessors){const v=g.bufferViews[a.bufferView];assert(v);assert(v.byteOffset+v.byteLength<=buffer.length);const element=bytes[a.componentType]*size[a.type];assert((a.byteOffset||0)+(a.count-1)*(v.byteStride||element)+element<=v.byteLength)}
- assert.equal(g.meshes.reduce((n,m)=>n+m.primitives.reduce((n,p)=>n+g.accessors[p.indices].count/3,0),0),24278)
- assert(g.nodes.some(n=>n.name==='Spray_Label'));assert(g.materials.some(m=>m.name==='Accent_Cobalt'))
+ assert.equal(g.meshes.reduce((n,m)=>n+m.primitives.reduce((n,p)=>n+g.accessors[p.indices].count/3,0),0),52506)
+ assert(g.materials.some(m=>m.name==='LabelSurface'));assert(g.materials.some(m=>m.name==='BrandAccent'))
  for(const image of g.images)assert(image.uri.startsWith('data:image/png;base64,'))
 })
 process.env.NODE_ENV='test';process.env.ADMIN_PASSWORD='local-brand-test';process.env.KV_REST_API_URL='https://redis.test';process.env.KV_REST_API_TOKEN='test'
