@@ -8,6 +8,7 @@ export function services() {
     switch(op.toUpperCase()){
       case 'EVAL': {
         const script=a[0], key1=a[2], key2=a[3];let args=a.slice(4)
+        if(script.includes('IMPORT_CAS')){if(data.get(key1)!==args[0])return 0;data.set(key1,args[1]);redis(['ZADD',key2,args[2],args[3]]);return 1}
         if(script.includes('CAS_LEAD')){if(data.get(key1)!==args[0])return 0;args=args.slice(1)}
         else if(!script.includes('SAVE_LEAD'))throw new Error('Unknown test Lua')
         const [raw,state,id,score]=args;data.set(key1,raw)
