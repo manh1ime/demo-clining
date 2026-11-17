@@ -1,12 +1,19 @@
 {
-  "name": "cleaning-site",
-  "version": "1.1.0",
+  "name": "legche-cleaning-site-and-leads",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
-  "description": "Клининговый шаблон и CRM с персональными демо",
   "scripts": {
-    "test": "node --test tests/api.test.mjs tests/bot.test.mjs tests/branding.test.mjs tests/kit.test.mjs tests/theme.test.mjs tests/import.test.mjs",
-    "dev": "node scripts/dev-server.mjs",
-    "check": "node scripts/check-config.mjs"
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build --mode production",
+    "build:local": "vite build --mode internal",
+    "preview": "vite preview --host 127.0.0.1",
+    "import:crm100": "node scripts/import-crm100.mjs"
+  },
+  "dependencies": {
+    "three": "0.181.1"
+  },
+  "devDependencies": {
+    "vite": "7.3.8"
   }
 }

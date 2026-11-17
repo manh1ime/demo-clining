@@ -1,121 +1,127 @@
-// POST /api/lead — принимает заявку с сайта и отправляет её менеджеру в Telegram.
-import { tg, hasRedis, redis, saveLead, mutateLead, renderLead, keyboard } from './_lib.js'
-import { site, estimate } from './_config.js'
-import { limit, ipKey, authenticated, sameOrigin } from './_auth.js'
-import crypto from 'node:crypto'
+const SERVICE_NAMES = {
+  regular: "Поддерживающая уборка",
+  deep: "Генеральная уборка",
+  renovation: "Уборка после ремонта",
+};
 
-const clean = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max)
-const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim().slice(0, max)
-const num = (v, min, max) => Math.min(Math.max(Math.round(Number(v) || 0), min), max)
+const RATES = { regular: 70, deep: 130, renovation: 170 };
+const EXTRA_PRICES = { Окна: 1200, Духовка: 700, Холодильник: 600, Балкон: 800 };
+
+function text(value, maxLength) {
+  return String(value ?? "").trim().slice(0, maxLength);
+}
+
+function escapeHtml(value) {
+  return text(value, 2000)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function parseBody(req) {
+  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) return req.body;
+  const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : req.body;
+  return raw ? JSON.parse(raw) : {};
+}
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST')
-    return res.status(405).json({ error: 'Method not allowed' })
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ ok: false, error: "Метод не поддерживается" });
   }
 
-  let b = req.body
-  if (typeof b === 'string') {
-    try { b = JSON.parse(b) } catch { b = {} }
+  if (Number(req.headers["content-length"] || 0) > 16_000) {
+    return res.status(413).json({ ok: false, error: "Слишком большой запрос" });
   }
-  b = b || {}
 
-  const liveTest=b.liveTest===true
-  if(liveTest && (process.env.LIVE_TEST_MODE!=='true' || !process.env.ADMIN_PASSWORD || !authenticated(req) || !sameOrigin(req)))
-    return res.status(403).json({error:'Живой тест выключен или требуется вход в /admin'})
-  if(liveTest && b.preview)return res.status(400).json({error:'Живой тест доступен только на главной странице'})
-
-  if(liveTest && !hasRedis())return res.status(503).json({error:'Для полного живого теста подключите Redis'})
-
-  // Honeypot: невидимое поле, которое заполняют только боты
-  if (b.website) return res.status(200).json({ ok: true, id: '—' })
-
-  if (b.consent !== true) return res.status(400).json({ error: 'Необходимо согласие на обработку персональных данных' })
-  const name = clean(b.name, 60)
-  const phone = clean(b.phone, 25)
-  const digits = phone.replace(/\D/g, '')
-  if (!name) return res.status(400).json({ error: 'Введите имя' })
-  if (digits.length < 10 || digits.length > 15 || !/^[+\d\s()\-]+$/.test(phone))
-    return res.status(400).json({ error: 'Введите телефон: от 10 до 15 цифр' })
-
-  const lead = {
-    id: null,
-    status: 'new',
-    name,
-    phone,
-    date: /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : '',
-    comment: cleanText(b.comment, 1000),
-    service: clean(b.service, 80) || 'Уборка',
-    area: num(b.area, 0, 2000),
-    extras: Array.isArray(b.extras) ? b.extras.slice(0, 15).map((x) => clean(x, 60)).filter(Boolean) : [],
-    total: num(b.total, 0, 10_000_000),
-    preview: /^[a-z0-9-]{2,60}$/.test(b.preview || '') ? b.preview : '',
-    createdAt: new Date().toISOString(),
-    assignee: null,
-    history: [],
-    isTest: liveTest,
-    revision: 0,
+  let body;
+  try {
+    body = parseBody(req);
+  } catch {
+    return res.status(400).json({ ok: false, error: "Некорректный формат данных" });
   }
+
+  // Honeypot fields receive a neutral response without contacting Telegram.
+  if (text(body.website, 200)) return res.status(200).json({ ok: true });
+
+  const name = text(body.name, 60);
+  const phone = text(body.phone, 25);
+  const phoneDigits = phone.replace(/\D/g, "");
+  const service = SERVICE_NAMES[body.service] ? body.service : "regular";
+  const area = Math.min(250, Math.max(20, Math.round(Number(body.area) || 0)));
+  const address = text(body.address, 120);
+  const comment = text(body.comment, 1000);
+  const requestedDate = text(body.date, 10);
+  const startedAt = Number(body.startedAt) || 0;
+  const elapsed = Date.now() - startedAt;
+
+  if (name.length < 2 || phoneDigits.length < 10 || phoneDigits.length > 15 || !Number.isFinite(area)) {
+    return res.status(400).json({ ok: false, error: "Проверьте имя, телефон и площадь" });
+  }
+
+  if (startedAt && (elapsed < 1200 || elapsed > 7_200_000)) {
+    return res.status(400).json({ ok: false, error: "Обновите страницу и повторите отправку" });
+  }
+
+  const extras = Array.isArray(body.extras)
+    ? body.extras
+      .map((item) => text(item?.title, 40))
+      .filter((title, index, values) => EXTRA_PRICES[title] && values.indexOf(title) === index)
+    : [];
+  const calculatedTotal = Math.max(2500, area * RATES[service])
+    + extras.reduce((sum, title) => sum + EXTRA_PRICES[title], 0);
+
+  const lines = [
+    "<b>Новая заявка с сайта «Легче»</b>",
+    "",
+    `<b>Имя:</b> ${escapeHtml(name)}`,
+    `<b>Телефон:</b> <code>${escapeHtml(phone)}</code>`,
+    `<b>Уборка:</b> ${escapeHtml(SERVICE_NAMES[service])}`,
+    `<b>Площадь:</b> ${area} м²`,
+    `<b>Расчёт:</b> ${new Intl.NumberFormat("ru-RU").format(calculatedTotal)} ₽`,
+  ];
+
+  if (extras.length) lines.push(`<b>Дополнительно:</b> ${extras.map(escapeHtml).join(", ")}`);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) lines.push(`<b>Желаемая дата:</b> ${escapeHtml(requestedDate)}`);
+  if (address) lines.push(`<b>Адрес или район:</b> ${escapeHtml(address)}`);
+  if (comment) lines.push(`<b>Комментарий:</b> ${escapeHtml(comment)}`);
+  lines.push("", `<i>Получено: ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Moscow" }).format(new Date())}</i>`);
+
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) {
+    console.error("Telegram environment variables are not configured");
+    return res.status(503).json({ ok: false, error: "Приём заявок временно недоступен" });
+  }
+
+  const telegramBody = {
+    chat_id: chatId,
+    text: lines.join("\n"),
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+  };
+  if (process.env.TELEGRAM_THREAD_ID) telegramBody.message_thread_id = process.env.TELEGRAM_THREAD_ID;
 
   try {
-    let source = site.pricing
-    if (b.preview && !lead.preview) return res.status(400).json({error:'Некорректный пример'})
-    if (lead.preview) {
-      if (!process.env.ADMIN_PASSWORD || !hasRedis()) return res.status(404).json({error:'Пример недоступен'})
-      const raw = await redis('GET', `prospect:${lead.preview}`)
-      if (!raw) return res.status(404).json({error:'Пример недоступен'})
-      source = JSON.parse(raw)
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(telegramBody),
+      signal: AbortSignal.timeout(8000),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) {
+      console.error("Telegram rejected the lead message", response.status, result.description || "Unknown error");
+      return res.status(502).json({ ok: false, error: "Не удалось передать заявку менеджеру" });
     }
-    Object.assign(lead, estimate(source, b))
-    lead.consent = { accepted: true, at: lead.createdAt, policyVersion: site.legal.privacyDate }
-    if (lead.date && (!Number.isFinite(Date.parse(lead.date)) || new Date(lead.date).toISOString().slice(0,10)!==lead.date || lead.date < new Date().toLocaleDateString('en-CA', {timeZone:process.env.DISPLAY_TZ||'Europe/Moscow'}))) return res.status(400).json({error:'Укажите корректную дату, не раньше сегодняшней'})
-    if (!liveTest && (lead.preview || site.site.demo !== false)) {
-      if (hasRedis()) {
-        if (!(await limit('demo:'+ipKey(req), 10, 600))) return res.status(429).json({error:'Слишком много тестов. Повторите позже.'})
-        if (lead.preview) await redis('HINCRBY', 'pvleads', lead.preview, 1)
-      }
-      // Demonstration only: never persist or forward a visitor's contact details.
-      return res.status(200).json({ok:true, demo:true, id:'DEMO-'+crypto.randomBytes(4).toString('hex').toUpperCase(),total:lead.total})
-    }
-  } catch(e) {
-    if (/Некорректный|Неизвестная/.test(e.message)) return res.status(400).json({error:e.message})
-    console.error(e)
-    return res.status(503).json({error:'Сервис временно недоступен'})
-  }
-
-  const chatId = process.env.TELEGRAM_CHAT_ID
-  if (!chatId || !process.env.TELEGRAM_BOT_TOKEN)
-    return res.status(500).json({ error: 'Приём заявок ещё не настроен' })
-
-  try {
-    if (hasRedis()) {
-      // Простой антиспам: не больше 5 заявок с одного IP за 10 минут
-      const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown'
-      const key = `rl:${ipKey(req)}`
-      const count = Number(await redis('INCR', key))
-      if (count === 1) await redis('EXPIRE', key, 600)
-      if (count > 5) return res.status(429).json({ error: 'Слишком много заявок. Попробуйте через несколько минут.' })
-      lead.id = String(await redis('INCR', 'lead:seq'))
-    } else {
-      lead.id = Date.now().toString(36).toUpperCase()
-    }
-
-    // Persist before notification: Telegram errors must not destroy the submitted lead.
-    if (hasRedis()) await saveLead(lead)
-    const msg = await tg('sendMessage', {
-      chat_id: chatId,
-      text: renderLead(lead),
-      parse_mode: 'HTML',
-      reply_markup: keyboard(lead),
-      link_preview_options: { is_disabled: true },
-    })
-    lead.messageId = msg.message_id
-    if (hasRedis()) await mutateLead(lead.id,l=>{l.messageId=msg.message_id})
-    if (hasRedis() && lead.preview) await redis('HINCRBY', 'pvleads', lead.preview, 1)
-
-    return res.status(200).json({ ok: true, id: lead.id, total: lead.total, isTest: liveTest })
-  } catch (e) {
-    console.error(e)
-    return res.status(502).json({ error: 'Не удалось отправить заявку. Попробуйте чуть позже.' })
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error("Telegram request failed", error.name || "Error");
+    return res.status(502).json({ ok: false, error: "Не удалось передать заявку менеджеру" });
   }
 }

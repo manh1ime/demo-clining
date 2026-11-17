@@ -1,4 +1,6 @@
-tests/
-scripts/
-*.md
-.github/
+backups/
+screenshots/
+dist-local/
+leads-data.local.json
+legacy-site.html
+IMPLEMENTATION_REPORT.md

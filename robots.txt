@@ -1,5 +1,0 @@
-User-agent: *
-Disallow: /admin
-Disallow: /api/
-Disallow: /p/
-# На настоящем сайте добавьте: Sitemap: https://ВАШ-ДОМЕН/sitemap.xml

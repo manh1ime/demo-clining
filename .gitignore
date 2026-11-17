@@ -1,6 +1,13 @@
-.vercel
+node_modules/
+dist/
+dist-local/
+leads-data.js
+leads-data.local.json
+backups/
+screenshots/
+legacy-site.html
 .env
 .env.*
 !.env.example
-node_modules
-.DS_Store
+.vite/
+*.log

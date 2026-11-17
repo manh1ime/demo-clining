@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#f3f5f7">
+  <title>Лиды - внутренняя панель</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <script>try{document.documentElement.dataset.theme=localStorage.getItem("legche-leads-theme")||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}catch(e){}</script>
+  <link rel="stylesheet" href="/leads.css">
+</head>
+<body>
+  <section class="admin-auth" id="adminAuth">
+    <div class="auth-brand"><span class="crm-brand-mark"><i></i><i></i><i></i></span><strong>легче</strong><span>Панель лидов</span></div>
+    <form class="auth-card" id="adminLoginForm">
+      <span>Внутренняя CRM</span>
+      <h1>Вход для менеджера</h1>
+      <p>Введите пароль панели. Он проверяется на сервере и не сохраняется в браузере.</p>
+      <label><span>Пароль</span><input id="adminPassword" name="password" type="password" autocomplete="current-password" required autofocus></label>
+      <button class="primary-button full-button" type="submit">Войти</button>
+      <div class="auth-status" id="adminAuthStatus" role="status" hidden></div>
+    </form>
+  </section>
+  <div id="crmApp" hidden>
+  <div class="crm-shell">
+    <aside class="crm-sidebar" id="crmSidebar">
+      <div class="sidebar-brand">
+        <a class="crm-brand" href="/leads.html" aria-label="Легче, панель лидов"><span class="crm-brand-mark"><i></i><i></i><i></i></span><span>легче</span></a>
+        <button class="sidebar-close" id="sidebarClose" type="button" aria-label="Закрыть меню">×</button>
+      </div>
+      <div class="workspace-name"><span>Л</span><div><strong>Работа с лидами</strong><small>Внутренняя панель</small></div></div>
+      <nav class="crm-nav" aria-label="Разделы лидов">
+        <span class="nav-caption">Лиды</span>
+        <button class="is-active" type="button" data-view="all"><i>◫</i><span>Все лиды</span><b data-count="all">0</b></button>
+        <button type="button" data-view="new"><i>＋</i><span>Новые</span><b data-count="new">0</b></button>
+        <button type="button" data-view="priority"><i>↑</i><span>Первая очередь</span><b data-count="priority">0</b></button>
+        <button type="button" data-view="sent"><i>↗</i><span>Оффер отправлен</span><b data-count="sent">0</b></button>
+        <button type="button" data-view="answered"><i>↩</i><span>Есть ответ</span><b data-count="answered">0</b></button>
+        <button type="button" data-view="interest"><i>◇</i><span>Есть интерес</span><b data-count="interest">0</b></button>
+        <button type="button" data-view="clients"><i>✓</i><span>Клиенты</span><b data-count="clients">0</b></button>
+        <button type="button" data-view="refused"><i>×</i><span>Отказы</span><b data-count="refused">0</b></button>
+        <span class="nav-caption">Материалы</span>
+        <button type="button" data-view="demos"><i>▱</i><span>Демо-сайты</span><b data-count="demos">0</b></button>
+        <button type="button" data-view="templates"><i>≡</i><span>Шаблоны сообщений</span></button>
+        <button type="button" data-view="settings"><i>⚙</i><span>Настройки</span></button>
+      </nav>
+      <div class="sidebar-fill"></div>
+      <div class="storage-state"><span></span><div><strong>Данные сохранены локально</strong><small id="storageSummary">0 лидов в текущем браузере</small></div></div>
+      <div class="manager-row"><span class="manager-avatar">АК</span><div><strong>Анна К.</strong><small>Менеджер</small></div><button type="button" id="adminLogout" aria-label="Выйти из панели">↪</button></div>
+    </aside>
+
+    <main class="crm-main">
+      <header class="crm-topbar">
+        <div class="topbar-title"><button class="mobile-menu" id="mobileMenu" type="button" aria-label="Открыть меню">☰</button><div><span>Текущий раздел</span><strong id="viewTitle">Все лиды</strong></div></div>
+        <label class="global-search"><span aria-hidden="true">⌕</span><input id="globalSearch" type="search" placeholder="Компания, город, телефон, заметка..." autocomplete="off"><kbd>Ctrl K</kbd></label>
+        <div class="topbar-actions">
+          <button class="secondary-button topbar-data-button" type="button" data-top-action="import">Импорт</button>
+          <button class="secondary-button topbar-data-button" type="button" data-top-action="export">Экспорт</button>
+          <button class="icon-control filter-mobile-button" id="mobileFilters" type="button" aria-label="Открыть фильтры">≡<span id="mobileFilterCount" hidden>0</span></button>
+          <button class="icon-control" id="themeToggle" type="button" aria-label="Сменить тему"><span class="theme-icon">◐</span></button>
+          <div class="action-menu-wrap"><button class="icon-control" id="actionMenuButton" type="button" aria-label="Действия с базой">•••</button><div class="action-menu" id="actionMenu" hidden><button type="button" data-action="backup">Скачать резервную копию</button><button type="button" data-action="export">Скачать CSV</button><button type="button" data-action="import">Импортировать JSON или CSV</button><button type="button" data-action="reset">Восстановить исходные 100 лидов</button></div></div>
+          <button class="primary-button" id="newLeadButton" type="button">+ Новый лид</button>
+        </div>
+      </header>
+
+      <section class="crm-content" id="listView">
+        <div class="list-intro"><div><p id="listSubtitle">Компании, с которыми нужно работать сегодня</p><h1 id="listHeading">Все лиды</h1></div><div class="list-date"><span>Сегодня</span><strong id="todayLabel">17 ноября</strong></div></div>
+
+        <div class="stat-strip" id="statStrip" aria-label="Краткая статистика">
+          <button type="button" data-stat="all"><span>Всего</span><strong data-stat-value="all">0</strong></button>
+          <button type="button" data-stat="new"><span>Новые</span><strong data-stat-value="new">0</strong></button>
+          <button type="button" data-stat="priority"><span>Первая очередь</span><strong data-stat-value="priority">0</strong></button>
+          <button type="button" data-stat="demos"><span>Открывали демо</span><strong data-stat-value="demos">0</strong></button>
+          <button type="button" data-stat="sent"><span>Ожидают ответа</span><strong data-stat-value="sent">0</strong></button>
+          <button type="button" data-stat="interest"><span>Есть интерес</span><strong data-stat-value="interest">0</strong></button>
+          <button type="button" data-stat="clients"><span>Клиенты</span><strong data-stat-value="clients">0</strong></button>
+        </div>
+
+        <section class="lead-list-card">
+          <div class="list-toolbar">
+            <div class="desktop-filters">
+              <label><span>Статус</span><select id="statusFilter"><option value="">Все статусы</option></select></label>
+              <label><span>Группа</span><select id="groupFilter"><option value="">Все группы</option></select></label>
+              <label><span>Город</span><select id="cityFilter"><option value="">Все города</option></select></label>
+            </div>
+            <div class="toolbar-end"><button class="secondary-button" id="advancedFilters" type="button">Фильтры <span id="activeFilterCount" hidden>0</span></button><label class="sort-control"><span>Сортировка</span><select id="sortSelect"><option value="priority">По приоритету</option><option value="createdAt">По дате добавления</option><option value="updatedAt">По последнему изменению</option><option value="nextAction">По следующему действию</option><option value="demoViews">По просмотрам демо</option><option value="applications">По заявкам с демо</option></select></label></div>
+          </div>
+          <div class="active-filters" id="activeFilters" hidden></div>
+          <div class="list-summary"><div><strong id="visibleCount">0</strong><span> компаний</span></div><span id="selectionHint">Нажмите на строку, чтобы открыть карточку</span></div>
+          <div class="lead-table-head" aria-hidden="true"><span>Компания</span><span>Статус</span><span>Группа предложения</span><span>Приоритет</span><span>Следующий шаг</span><span>Последнее действие</span><span>Демо</span><span>Связь</span><span></span></div>
+          <div class="lead-rows" id="leadRows" role="list"></div>
+          <div class="empty-state" id="emptyState" hidden><span>⌕</span><h2>Ничего не найдено</h2><p>Измените запрос или сбросьте фильтры.</p><button class="secondary-button" type="button" id="emptyReset">Сбросить фильтры</button></div>
+        </section>
+
+        <section class="special-view" id="templatesView" hidden></section>
+        <section class="special-view" id="settingsView" hidden></section>
+      </section>
+
+      <section class="lead-detail" id="leadDetail" hidden aria-labelledby="detailTitle">
+        <header class="detail-header">
+          <button class="back-button" id="backToLeads" type="button">← Все лиды</button>
+          <div class="detail-identity"><span id="detailCity">Город</span><h1 id="detailTitle">Компания</h1><div class="mobile-detail-meta"><span id="mobileDetailStatus">Новый</span><span id="mobileDetailPriority">Средний приоритет</span></div></div>
+          <div class="detail-header-controls"><label><span>Статус</span><select id="detailStatus"></select></label><label><span>Группа</span><select id="detailGroup"></select></label><label><span>Приоритет</span><select id="detailPriority"></select></label><span class="unsaved-mark" id="unsavedMark" hidden>Есть изменения</span><button class="danger-icon" id="deleteLead" type="button" aria-label="Удалить лид">⌫</button><button class="primary-button" id="saveLead" type="button">Сохранить</button></div>
+        </header>
+        <nav class="detail-tabs" id="detailTabs" aria-label="Разделы карточки"><button class="is-active" type="button" data-tab="overview">Обзор</button><button type="button" data-tab="contacts">Контакты</button><button type="button" data-tab="work">План</button><button type="button" data-tab="message">Сообщение</button><button type="button" data-tab="demo">Демо</button><button type="button" data-tab="history">История</button></nav>
+        <div class="detail-body" id="detailBody"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="filter-drawer" id="filterDrawer" hidden>
+    <button class="drawer-scrim" type="button" data-close-filters aria-label="Закрыть фильтры"></button>
+    <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="filterTitle">
+      <header><div><span>Настройка списка</span><h2 id="filterTitle">Фильтры</h2></div><button type="button" data-close-filters aria-label="Закрыть">×</button></header>
+      <div class="drawer-fields">
+        <label><span>Статус</span><select id="drawerStatus"><option value="">Все статусы</option></select></label>
+        <label><span>Группа предложения</span><select id="drawerGroup"><option value="">Все группы</option></select></label>
+        <label><span>Город</span><select id="drawerCity"><option value="">Все города</option></select></label>
+        <label><span>Канал связи</span><select id="channelFilter"><option value="">Любой канал</option><option value="phone">Телефон</option><option value="whatsapp">WhatsApp</option><option value="telegram">Telegram</option><option value="max">MAX</option><option value="vk">VK</option></select></label>
+        <label><span>Приоритет</span><select id="priorityFilter"><option value="">Любой</option><option value="first">Первая очередь</option><option value="1-3">Места 1–3</option><option value="4-8">Места 4–8</option><option value="9+">Место 9 и ниже</option><option value="none">Без приоритета</option></select></label>
+        <label><span>Дата следующего действия</span><select id="actionDateFilter"><option value="">Любая дата</option><option value="today">Сегодня</option><option value="overdue">Просрочено</option><option value="scheduled">Запланировано</option><option value="no-step">Нет следующего шага</option></select></label>
+        <label><span>Дата добавления</span><select id="addedDateFilter"><option value="">Любая дата</option><option value="today">Сегодня</option><option value="7d">Последние 7 дней</option><option value="30d">Последние 30 дней</option></select></label>
+        <div class="toggle-list">
+          <label><input id="firstQueueFilter" type="checkbox"><span>Только первая очередь</span></label>
+          <label><input id="demoFilter" type="checkbox"><span>Открывали демо</span></label>
+          <label><input id="replyFilter" type="checkbox"><span>Есть ответ</span></label>
+          <label><input id="phoneFilter" type="checkbox"><span>Есть телефон</span></label>
+          <label><input id="applicationsFilter" type="checkbox"><span>Есть заявки с демо</span></label>
+        </div>
+      </div>
+      <footer><button class="secondary-button" id="resetFilters" type="button">Сбросить</button><button class="primary-button" id="applyFilters" type="button">Показать лиды</button></footer>
+    </section>
+  </div>
+
+  <div class="modal-layer" id="newLeadModal" hidden>
+    <button class="modal-scrim" type="button" data-close-modal aria-label="Закрыть"></button>
+    <section class="crm-modal" role="dialog" aria-modal="true" aria-labelledby="newLeadTitle">
+      <header><div><span>Новая карточка</span><h2 id="newLeadTitle">Добавить лид</h2></div><button type="button" data-close-modal aria-label="Закрыть">×</button></header>
+      <div class="modal-tabs"><button class="is-active" type="button" data-create-tab="single">Один лид</button><button type="button" data-create-tab="bulk">Списком</button></div>
+      <form id="newLeadForm">
+        <div class="create-panel" data-create-panel="single">
+          <label><span>Название компании</span><input name="name" required maxlength="120" placeholder="Например, Чистый дом"></label>
+          <div class="field-grid"><label><span>Город</span><input name="city" required maxlength="80" value="Санкт-Петербург"></label><label><span>Телефон</span><input name="phone" maxlength="40" placeholder="+7 900 000-00-00"></label></div>
+          <div class="field-grid"><label><span>Статус</span><select name="status"></select></label><label><span>Группа предложения</span><select name="offerGroup"></select></label></div>
+          <div class="field-grid"><label><span>ID исходной карточки</span><input name="sourceFirmId" maxlength="120" placeholder="Например, ID 2ГИС"></label><label><span>Приоритет</span><input name="priority" type="number" min="0" max="999" value="0"></label></div>
+          <label><span>Заметка</span><textarea name="notes" rows="3" maxlength="2000" placeholder="Что уже известно о компании"></textarea></label>
+          <button class="primary-button full-button" type="submit">Добавить лид</button>
+        </div>
+        <div class="create-panel" data-create-panel="bulk" hidden>
+          <label><span>Город для списка</span><input name="bulkCity" maxlength="80" value="Санкт-Петербург"></label>
+          <label><span>Компании, по одной в строке</span><textarea name="bulkText" rows="9" placeholder="1. Компания +7 900 000-00-00&#10;2. Другая компания +7 901 000-00-00"></textarea></label>
+          <p class="field-help">Нумерация и телефон в конце строки распознаются автоматически. Дубли по названию и городу будут пропущены.</p>
+          <button class="primary-button full-button" id="bulkCreate" type="button">Добавить список</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div class="modal-layer" id="importModal" hidden>
+    <button class="modal-scrim" type="button" data-close-import aria-label="Закрыть"></button>
+    <section class="crm-modal import-modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+      <header><div><span>Безопасное добавление</span><h2 id="importTitle">Проверка импорта</h2></div><button type="button" data-close-import aria-label="Закрыть">×</button></header>
+      <div class="import-body" id="importBody"><div class="empty-state"><span>⇧</span><h2>Выберите JSON или CSV</h2><p>Файл сначала будет проверен. Данные не изменятся без подтверждения.</p></div></div>
+      <footer class="import-footer"><button class="secondary-button" type="button" id="importBackup">Скачать резервную копию</button><label><input id="importBackupConfirmed" type="checkbox"> Резервная копия сохранена</label><button class="primary-button" type="button" id="confirmImport" disabled>Применить импорт</button></footer>
+    </section>
+  </div>
+
+  <div class="modal-layer" id="sessionExpired" hidden>
+    <div class="modal-scrim"></div>
+    <section class="crm-modal" role="alertdialog" aria-modal="true" aria-labelledby="sessionExpiredTitle">
+      <header><div><span>Доступ к данным</span><h2 id="sessionExpiredTitle">Сессия закончилась</h2></div></header>
+      <div class="create-panel"><p class="field-help">Изменения не отправлялись на сервер. Обновите страницу или войдите повторно, когда будет подключена авторизация.</p><button class="primary-button full-button" type="button" id="reloadSession">Обновить страницу</button></div>
+    </section>
+  </div>
+
+  <input id="csvInput" type="file" accept=".csv,.json,text/csv,application/json" hidden>
+  <div class="toast" id="crmToast" role="status" aria-live="polite"></div>
+  </div>
+  <script type="module" src="/leads-entry.js"></script>
+</body>
+</html>
