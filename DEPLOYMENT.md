@@ -9,10 +9,22 @@
 - `TELEGRAM_BOT_TOKEN` - токен существующего Telegram-бота.
 - `TELEGRAM_CHAT_ID` - идентификатор личного чата или группы, куда должны приходить заявки.
 - `TELEGRAM_THREAD_ID` - необязательный идентификатор темы внутри группы.
+- `TELEGRAM_WEBHOOK_SECRET` - длинная случайная строка для проверки входящих команд Telegram.
+- `PUBLIC_SITE_URL` - production-адрес Vercel, например `https://project.vercel.app`.
 - `ADMIN_PASSWORD` - пароль входа во внутреннюю панель лидов.
 - `ADMIN_SESSION_SECRET` - необязательный отдельный ключ подписи сессии. Если не указан, используется `ADMIN_PASSWORD`.
 
 Токен нельзя добавлять в HTML, JavaScript браузера, Git или URL.
+
+После первого deploy настройте команды бота локально, передав секреты только через переменные процесса:
+
+```powershell
+$env:PUBLIC_SITE_URL="https://project.vercel.app"
+$env:TELEGRAM_WEBHOOK_SECRET="тот-же-секрет-что-в-vercel"
+npm run telegram:setup
+```
+
+После этого бот отвечает на `/start`, `/id`, `/test` и `/help` в личных чатах и группах.
 
 ## Локальная проверка
 

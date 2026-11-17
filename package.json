@@ -8,7 +8,9 @@
     "build": "vite build --mode production",
     "build:local": "vite build --mode internal",
     "preview": "vite preview --host 127.0.0.1",
-    "import:crm100": "node scripts/import-crm100.mjs"
+    "import:crm100": "node scripts/import-crm100.mjs",
+    "telegram:setup": "node scripts/setup-telegram.mjs",
+    "telegram:check": "node scripts/setup-telegram.mjs --check"
   },
   "dependencies": {
     "three": "0.181.1"
