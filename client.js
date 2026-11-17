@@ -165,6 +165,8 @@ $("#bookingForm").addEventListener("submit", (event) => {
     area,
     extras,
     estimate: total,
+    demoBrand: demoMode ? demoConfig.brand : "",
+    demoMode,
     website: $("#website").value,
     startedAt: Number($("#startedAt").value),
     page: window.location.href,

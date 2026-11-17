@@ -56,6 +56,7 @@ export default async function handler(req, res) {
   const area = Math.min(250, Math.max(20, Math.round(Number(body.area) || 0)));
   const address = text(body.address, 120);
   const comment = text(body.comment, 1000);
+  const demoBrand = text(body.demoBrand, 60);
   const requestedDate = text(body.date, 10);
   const startedAt = Number(body.startedAt) || 0;
   const elapsed = Date.now() - startedAt;
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
     + extras.reduce((sum, title) => sum + EXTRA_PRICES[title], 0);
 
   const lines = [
-    "<b>Новая заявка с сайта «Легче»</b>",
+    demoBrand ? `<b>Тестовая заявка из демо «${escapeHtml(demoBrand)}»</b>` : "<b>Новая заявка с сайта «Легче»</b>",
     "",
     `<b>Имя:</b> ${escapeHtml(name)}`,
     `<b>Телефон:</b> <code>${escapeHtml(phone)}</code>`,
@@ -85,6 +86,8 @@ export default async function handler(req, res) {
     `<b>Площадь:</b> ${area} м²`,
     `<b>Расчёт:</b> ${new Intl.NumberFormat("ru-RU").format(calculatedTotal)} ₽`,
   ];
+
+  if (demoBrand) lines.splice(2, 0, "<b>Режим:</b> предварительный показ сайта и Telegram-бота", "");
 
   if (extras.length) lines.push(`<b>Дополнительно:</b> ${extras.map(escapeHtml).join(", ")}`);
   if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) lines.push(`<b>Желаемая дата:</b> ${escapeHtml(requestedDate)}`);
