@@ -53,8 +53,6 @@ export default async function handler(req, res) {
         { command: "mine", description: "Мои заявки" },
         { command: "lead", description: "Открыть заявку по номеру" },
         { command: "note", description: "Добавить заметку к заявке" },
-        { command: "site", description: "Открыть сайт" },
-        { command: "admin", description: "Открыть CRM" },
         { command: "id", description: "Показать ID чата и темы" },
         { command: "test", description: "Проверить отправку сообщений" },
         { command: "help", description: "Доступные команды" },

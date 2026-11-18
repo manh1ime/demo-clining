@@ -37,8 +37,6 @@ const HELP = `<b>Управление заявками</b>
 /mine — мои заявки
 /lead 12 — открыть заявку
 /note 12 текст — добавить заметку
-/site — открыть сайт
-/admin — открыть CRM
 /id — ID чата и темы
 /test — проверка бота
 /help — список команд
@@ -52,8 +50,6 @@ const BOT_COMMANDS = [
   { command: "mine", description: "Мои заявки" },
   { command: "lead", description: "Открыть заявку по номеру" },
   { command: "note", description: "Добавить заметку" },
-  { command: "site", description: "Открыть сайт" },
-  { command: "admin", description: "Открыть CRM" },
   { command: "id", description: "ID чата и темы" },
   { command: "test", description: "Проверить бота" },
   { command: "help", description: "Доступные команды" },
@@ -175,11 +171,6 @@ async function processMessage(message) {
   if (command === "/help") return reply(message, allowed(message.chat.id, message.from) ? HELP : "<b>Бот заявок подключён</b>\n\n/id — показать ID чата и темы\n/test — проверить отправку\n/help — показать команды");
   if (!command.startsWith("/")) return;
   if (!allowed(message.chat.id, message.from)) return reply(message, "Управление заявками доступно только в настроенной группе менеджеров.");
-  if (command === "/site" || command === "/admin") {
-    const origin = String(process.env.PUBLIC_SITE_URL || "").replace(/\/$/, "");
-    if (!origin) throw new UserError("Укажите PUBLIC_SITE_URL в Vercel.");
-    return reply(message, command === "/site" ? `<a href="${origin}">Открыть сайт</a>` : `<a href="${origin}/admin">Открыть CRM</a>`);
-  }
   requireRedis();
   if (command === "/leads") return listLeads(message, message.from, "all");
   if (command === "/new") return listLeads(message, message.from, "new");
