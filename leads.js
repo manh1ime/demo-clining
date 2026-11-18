@@ -1,5 +1,7 @@
 import { createCleaningScene } from "./scene.js";
 
+const REMOTE_MODE = import.meta.env.MODE === "production";
+
 let CRM_PROSPECTS = [];
 let CRM_SOURCE_META = { format: "Локальный импорт", generatedAt: "" };
 if (import.meta.env.DEV || import.meta.env.MODE === "internal") {
@@ -214,7 +216,7 @@ function sourceToLead(record, index, customId) {
     factBasis: noteValue(record.notes, "Факт"),
     whatToOffer: String(record.offer || ""),
     demoCondition: noteValue(record.notes, "Условие демо"),
-    followUpAt: priority > 0 ? "2026-11-17" : "",
+    followUpAt: priority > 0 ? new Date().toISOString().slice(0, 10) : "",
     notes: String(record.notes || ""),
     description: noteValue(record.notes, "Факт") || "Описание компании пока не подтверждено.",
     source: "2ГИС · база 100 компаний",
@@ -338,6 +340,13 @@ const elements = {
   toast: $("#crmToast"),
 };
 
+let remoteRevision = 0;
+let remoteReady = !REMOTE_MODE;
+let syncTimer = null;
+let syncInFlight = false;
+let syncQueued = false;
+let remoteConflict = false;
+
 let toastTimer;
 function showToast(message, error = false) {
   elements.toast.textContent = message;
@@ -347,15 +356,118 @@ function showToast(message, error = false) {
   toastTimer = setTimeout(() => elements.toast.classList.remove("is-visible"), 2800);
 }
 
+function setSyncState(mode, title, detail) {
+  const host = $("#syncState");
+  host.classList.toggle("is-syncing", mode === "syncing");
+  host.classList.toggle("is-error", mode === "error");
+  $("#syncTitle").textContent = title;
+  $("#storageSummary").textContent = detail;
+}
+
+async function adminRequest(method = "GET", body = null, revision = null) {
+  const url = revision == null ? "/api/admin-leads" : `/api/admin-leads?revision=${encodeURIComponent(revision)}`;
+  const response = await fetch(url, {
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+    headers: { "X-Requested-With": "legche-admin", ...(body ? { "Content-Type": "application/json" } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (response.status === 401) window.dispatchEvent(new Event("crm:session-expired"));
+  if (!response.ok) {
+    const error = new Error(result.error || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.result = result;
+    throw error;
+  }
+  return result;
+}
+
+function cacheLeads() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.leads));
+}
+
+async function flushRemote() {
+  if (!REMOTE_MODE || !remoteReady || remoteConflict) return;
+  if (syncInFlight) { syncQueued = true; return; }
+  syncInFlight = true;
+  syncQueued = false;
+  setSyncState("syncing", "Сохраняем изменения", `${state.leads.length} лидов · общая база`);
+  try {
+    const result = await adminRequest("POST", { action: "saveSnapshot", revision: remoteRevision, items: state.leads });
+    remoteRevision = Number(result.revision) || remoteRevision;
+    setSyncState("ready", "Общая база синхронизирована", `${state.leads.length} лидов · версия ${remoteRevision}`);
+  } catch (error) {
+    if (error.status === 409) {
+      remoteConflict = true;
+      setSyncState("error", "Есть изменения с другого устройства", "Обновите страницу, чтобы не перезаписать данные");
+      showToast("База изменилась на другом устройстве. Обновите страницу перед продолжением.", true);
+    } else {
+      setSyncState("error", "Синхронизация недоступна", error.message);
+      showToast(`Не удалось сохранить общую базу: ${error.message}`, true);
+    }
+  } finally {
+    syncInFlight = false;
+    if (syncQueued && !remoteConflict) await flushRemote();
+  }
+}
+
+function scheduleRemoteSync() {
+  if (!REMOTE_MODE || !remoteReady || remoteConflict) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => { syncTimer = null; flushRemote(); }, 250);
+}
+
+async function pollRemote() {
+  if (!REMOTE_MODE || !remoteReady || remoteConflict || syncInFlight || syncTimer || state.dirty || state.selectedId) return;
+  try {
+    const result = await adminRequest("GET", null, remoteRevision);
+    if (!result.changed) return;
+    state.leads = Array.isArray(result.items) ? result.items.map(normalizeLead) : [];
+    remoteRevision = Number(result.revision) || 0;
+    cacheLeads();
+    renderList();
+    setSyncState("ready", "Общая база обновлена", `${state.leads.length} лидов · версия ${remoteRevision}`);
+    showToast("Получены изменения с другого устройства.");
+  } catch (error) {
+    setSyncState("error", "Не удалось обновить базу", error.message);
+  }
+}
+
 function saveLeads() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.leads));
-    $("#storageSummary").textContent = `${state.leads.length} лидов в текущем браузере`;
+    cacheLeads();
+    if (REMOTE_MODE) scheduleRemoteSync();
+    else setSyncState("ready", "Локальная база сохранена", `${state.leads.length} лидов в текущем браузере`);
     return true;
   } catch (error) {
     console.error(error);
     showToast("Не удалось сохранить изменения. Проверьте доступное место браузера.", true);
     return false;
+  }
+}
+
+async function initializeData() {
+  if (!REMOTE_MODE) {
+    if (!localStorage.getItem(STORAGE_KEY)) saveLeads();
+    else setSyncState("ready", "Локальная база сохранена", `${state.leads.length} лидов в текущем браузере`);
+    return;
+  }
+  setSyncState("syncing", "Подключаем общую базу", "Загрузка данных с сервера");
+  try {
+    const result = await adminRequest("GET", null, -1);
+    state.leads = Array.isArray(result.items) ? result.items.map(normalizeLead) : [];
+    remoteRevision = Number(result.revision) || 0;
+    remoteReady = true;
+    remoteConflict = false;
+    cacheLeads();
+    setSyncState("ready", "Общая база подключена", `${state.leads.length} лидов · версия ${remoteRevision}`);
+    if (!state.leads.length) setTimeout(() => showToast("Общая база пока пуста. Импортируйте JSON один раз на любом устройстве."), 300);
+  } catch (error) {
+    remoteReady = false;
+    setSyncState("error", "Общая база недоступна", error.message);
+    loadError = `Работаем с локальной копией: ${error.message}`;
   }
 }
 
@@ -883,6 +995,7 @@ function closeLead() {
   elements.listView.hidden = false;
   renderList();
   requestAnimationFrame(() => window.scrollTo({ top: state.listScroll, behavior: "auto" }));
+  setTimeout(pollRemote, 0);
 }
 
 function addDraftHistory(title, detail, type = "note") {
@@ -1620,7 +1733,7 @@ window.addEventListener("resize", () => {
 });
 
 window.addEventListener("storage", (event) => {
-  if (event.key !== STORAGE_KEY || state.dirty) return;
+  if (REMOTE_MODE || event.key !== STORAGE_KEY || state.dirty) return;
   try {
     const next = JSON.parse(event.newValue || "[]");
     if (Array.isArray(next)) { state.leads = next.map(normalizeLead); renderList(); }
@@ -1634,8 +1747,13 @@ if (new URLSearchParams(window.location.search).get("state") === "session-expire
 $("#todayLabel").textContent = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(new Date());
 $('#newLeadForm [name="status"]').innerHTML = options(STATUSES, "Новый");
 $('#newLeadForm [name="offerGroup"]').innerHTML = options(OFFER_GROUPS, OFFER_GROUPS[0]);
-if (!localStorage.getItem(STORAGE_KEY)) saveLeads();
+await initializeData();
 renderList();
+
+if (REMOTE_MODE) {
+  window.setInterval(pollRemote, 12_000);
+  window.addEventListener("focus", () => setTimeout(pollRemote, 100));
+}
 
 if (loadError) setTimeout(() => showToast(loadError, true), 250);
 try {

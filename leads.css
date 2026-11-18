@@ -114,6 +114,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sidebar-fill { flex: 1; min-height: 18px; }
 .storage-state { display: grid; grid-template-columns: 8px 1fr; gap: 8px; margin: 8px 3px 12px; padding: 11px; border: 1px solid rgba(118,213,163,.13); border-radius: 8px; background: rgba(118,213,163,.045); }
 .storage-state > span { width: 6px; height: 6px; margin-top: 4px; border-radius: 50%; background: #76d5a3; box-shadow: 0 0 8px rgba(118,213,163,.7); }
+.storage-state.is-syncing > span { background: #acc6ff; box-shadow: 0 0 8px rgba(172,198,255,.7); }
+.storage-state.is-error { border-color: rgba(240,128,128,.25); background: rgba(240,128,128,.06); }
+.storage-state.is-error > span { background: #f08080; box-shadow: 0 0 8px rgba(240,128,128,.7); }
 .storage-state div { display: grid; gap: 3px; }
 .storage-state strong { font-size: 8px; font-weight: 600; }
 .storage-state small { color: var(--sidebar-muted); font-size: 7px; }
