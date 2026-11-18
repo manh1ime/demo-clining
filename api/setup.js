@@ -42,12 +42,19 @@ export default async function handler(req, res) {
     await telegram("setWebhook", {
       url: webhookUrl,
       secret_token: secret,
-      allowed_updates: ["message", "my_chat_member"],
+      allowed_updates: ["message", "callback_query", "my_chat_member"],
       drop_pending_updates: false,
     });
     await telegram("setMyCommands", {
       commands: [
         { command: "start", description: "Подключение и доступные команды" },
+        { command: "leads", description: "Открытые заявки" },
+        { command: "new", description: "Новые заявки" },
+        { command: "mine", description: "Мои заявки" },
+        { command: "lead", description: "Открыть заявку по номеру" },
+        { command: "note", description: "Добавить заметку к заявке" },
+        { command: "site", description: "Открыть сайт" },
+        { command: "admin", description: "Открыть CRM" },
         { command: "id", description: "Показать ID чата и темы" },
         { command: "test", description: "Проверить отправку сообщений" },
         { command: "help", description: "Доступные команды" },

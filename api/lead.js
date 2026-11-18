@@ -1,3 +1,5 @@
+import { botKeyboard, createBotLead, hasRedis, mutateBotLead, renderBotLead } from "../lib/bot-store.js";
+
 const SERVICE_NAMES = {
   regular: "Поддерживающая уборка",
   deep: "Генеральная уборка",
@@ -102,12 +104,26 @@ export default async function handler(req, res) {
     return res.status(503).json({ ok: false, error: "Приём заявок временно недоступен" });
   }
 
+  let storedLead = null;
+  if (hasRedis()) {
+    try {
+      storedLead = await createBotLead({
+        name, phone, service: SERVICE_NAMES[service], area, total: calculatedTotal, extras,
+        date: /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : "",
+        address, comment, demoBrand,
+      });
+    } catch (error) {
+      console.error("Lead storage unavailable; sending Telegram notification without controls", error.name || "Error");
+    }
+  }
+
   const telegramBody = {
     chat_id: chatId,
-    text: lines.join("\n"),
+    text: storedLead ? renderBotLead(storedLead) : lines.join("\n"),
     parse_mode: "HTML",
     disable_web_page_preview: true,
   };
+  if (storedLead) telegramBody.reply_markup = botKeyboard(storedLead);
   if (process.env.TELEGRAM_THREAD_ID) telegramBody.message_thread_id = process.env.TELEGRAM_THREAD_ID;
 
   try {
@@ -122,7 +138,16 @@ export default async function handler(req, res) {
       console.error("Telegram rejected the lead message", response.status, result.description || "Unknown error");
       return res.status(502).json({ ok: false, error: "Не удалось передать заявку менеджеру" });
     }
-    return res.status(200).json({ ok: true });
+    if (storedLead) {
+      try {
+        await mutateBotLead(storedLead.id, (lead) => {
+          lead.telegram = { chatId: String(chatId), messageId: result.result.message_id, threadId: telegramBody.message_thread_id || null };
+        });
+      } catch (error) {
+        console.error("Telegram message metadata was not stored", error.name || "Error");
+      }
+    }
+    return res.status(200).json({ ok: true, leadId: storedLead?.id || null });
   } catch (error) {
     console.error("Telegram request failed", error.name || "Error");
     return res.status(502).json({ ok: false, error: "Не удалось передать заявку менеджеру" });
